@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { View, StyleSheet, SafeAreaView } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Typography from "../components/Typography";
 import ProgressBar from "../components/ProgressBar";
 import Button from "../components/Button";
@@ -20,8 +21,12 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete }) => {
     progress,
     answerSkill,
     nextSkill,
+    prevSkill,
     calculateSummaries,
   } = useSkillContext();
+
+  // SafeAreaのinsets取得
+  const insets = useSafeAreaInsets();
 
   const {
     breakCards,
@@ -97,11 +102,65 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
         <Typography variant="h5" style={styles.title}>
           スキル評価
         </Typography>
         <ProgressBar progress={progress} showLabel />
+
+        {/* 分野ごとの設問バランス可視化 */}
+        <View style={styles.categoryBarContainer}>
+          {(() => {
+            // 分野ごとの設問数を集計
+            const fieldCounts: { [field: string]: number } = {};
+            skills.forEach((s) => {
+              fieldCounts[s.分野] = (fieldCounts[s.分野] || 0) + 1;
+            });
+            const total = skills.length;
+            const fieldOrder = [
+              "インフラエンジニア",
+              "開発エンジニア（プログラマー）",
+              "開発エンジニア（システムエンジニア）",
+              "マネジメント",
+            ];
+            return (
+              <View style={{ flexDirection: "row", alignItems: "center", width: "100%", marginTop: 8 }}>
+                {fieldOrder.map((field, idx) => {
+                  const count = fieldCounts[field] || 0;
+                  const widthPercent = total > 0 ? (count / total) * 100 : 0;
+                  return (
+                    <View key={field} style={{ flex: count, alignItems: "center" }}>
+                      <View
+                        style={{
+                          height: 8,
+                          width: "100%",
+                          backgroundColor: theme.colors.primary.light,
+                          opacity: 0.5,
+                          borderRadius: 4,
+                          marginHorizontal: 2,
+                        }}
+                      />
+                      <Typography
+                        variant="caption"
+                        style={{
+                          fontSize: 11,
+                          color: theme.colors.gray[600],
+                          marginTop: 2,
+                          textAlign: "center",
+                        }}
+                        numberOfLines={1}
+                      >
+                        {field === "マネジメント"
+                          ? "MGR"
+                          : field.replace("開発エンジニア（", "").replace("）", "")}
+                      </Typography>
+                    </View>
+                  );
+                })}
+              </View>
+            );
+          })()}
+        </View>
       </View>
 
       <View style={styles.content}>
@@ -136,6 +195,18 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete }) => {
               このスキルを持っていますか？
             </Typography>
 
+            {/* カード左上に戻るテキスト */}
+            {currentSkillIndex > 0 && (
+              <View style={styles.backTextContainer}>
+                <Typography
+                  variant="caption"
+                  style={styles.backText}
+                  onPress={prevSkill}
+                >
+                  戻る
+                </Typography>
+              </View>
+            )}
             <View style={styles.buttonContainer}>
               <Button
                 title="はい"
@@ -201,6 +272,21 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.lg,
     textAlign: "center",
   },
+  backTextContainer: {
+    position: "absolute",
+    top: 8,
+    right: 12,
+    zIndex: 10,
+  },
+  backText: {
+    color: theme.colors.gray[500],
+    fontSize: 13,
+    textDecorationLine: "underline",
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -212,6 +298,11 @@ const styles = StyleSheet.create({
   },
   description: {
     marginBottom: theme.spacing.md,
+  },
+  categoryBarContainer: {
+    marginTop: 4,
+    marginBottom: 2,
+    width: "100%",
   },
   footer: {
     marginTop: theme.spacing.lg,

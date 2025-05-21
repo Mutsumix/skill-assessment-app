@@ -1,5 +1,8 @@
 import React from "react";
-import { View, StyleSheet, ScrollView, SafeAreaView, Share } from "react-native";
+import { View, StyleSheet, ScrollView, SafeAreaView, Share, Linking, Alert, Image } from "react-native";
+import Clipboard from "expo-clipboard";
+import { captureRef } from "react-native-view-shot";
+import { Platform } from "react-native";
 import Typography from "../components/Typography";
 import Button from "../components/Button";
 import RadarChart from "../components/RadarChart";
@@ -12,29 +15,52 @@ interface ResultScreenProps {
 }
 
 const ResultScreen: React.FC<ResultScreenProps> = ({ onRestart }) => {
-  const { summaries, resetAssessment } = useSkillContext();
+  const { summaries, resetAssessment, skills, userAnswers } = useSkillContext();
 
-  // 結果を共有
+  // レーダーチャート画像付きでX共有
+  const radarRef = React.useRef<View>(null);
+
+  // Xで共有（intent/post URL遷移）
   const handleShare = async () => {
-    try {
-      // カテゴリーごとの結果を集計
-      const resultText = summaries
-        .map(
-          (item) =>
-            `${item.category} > ${item.item}:\n` +
-            `初級: ${item.beginnerCount}/${item.beginnerTotal}\n` +
-            `中級: ${item.intermediateCount}/${item.intermediateTotal}\n` +
-            `上級: ${item.advancedCount}/${item.advancedTotal}\n`
-        )
-        .join("\n");
+    // 投稿文を生成
+    const resultText = summaries
+      .map(
+        (item) =>
+          `${item.category} > ${item.item}:\n` +
+          `初級: ${item.beginnerCount}/${item.beginnerTotal}\n` +
+          `中級: ${item.intermediateCount}/${item.intermediateTotal}\n` +
+          `上級: ${item.advancedCount}/${item.advancedTotal}\n`
+      )
+      .join("\n");
 
-      await Share.share({
-        title: "スキル評価結果",
-        message: `スキル習得状況評価結果\n\n${resultText}`,
-      });
-    } catch (error) {
-      console.error("共有エラー:", error);
+    // X intent/post URLを生成
+    const tweetText = encodeURIComponent(
+      `スキル習得状況評価結果\n\n${resultText}`
+    );
+    const url = `https://x.com/intent/post?text=${tweetText}`;
+
+    // Xアプリまたはブラウザで開く
+    const supported = await Linking.canOpenURL(url);
+    if (supported) {
+      Linking.openURL(url);
+    } else {
+      Alert.alert("エラー", "Xの投稿画面を開けませんでした。");
     }
+  };
+
+  // スプレッドシート用コピー
+  const handleCopySpreadsheet = async () => {
+    // skillsの順番でTRUE/FALSEを出力
+    const answerMap: { [skillId: number]: boolean } = {};
+    userAnswers.forEach((a) => {
+      answerMap[a.skillId] = a.hasSkill;
+    });
+    const lines = skills.map(
+      (s) => `${s.スキル}\t${answerMap[s.id] ? "TRUE" : "FALSE"}`
+    );
+    const text = lines.join("\n");
+    await Clipboard.setStringAsync(text);
+    Alert.alert("コピー完了", "スプレッドシート用データをクリップボードにコピーしました。");
   };
 
   // 再評価
@@ -61,7 +87,9 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ onRestart }) => {
         nestedScrollEnabled={true}
       >
         {/* レーダーチャート */}
-        <RadarChart data={summaries} />
+        <View ref={radarRef} collapsable={false}>
+          <RadarChart data={summaries} />
+        </View>
 
         {/* スキル一覧 */}
         <SkillList data={summaries} />
@@ -69,8 +97,23 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ onRestart }) => {
 
       <View style={styles.footer}>
         <Button
-          title="結果を共有"
+          title="Xで共有"
           onPress={handleShare}
+          variant="outline"
+          style={styles.button}
+          icon={
+            <Image
+              source={{
+                uri: "https://abs.twimg.com/favicons/twitter.2.ico",
+              }}
+              style={{ width: 18, height: 18, marginRight: 6 }}
+              resizeMode="contain"
+            />
+          }
+        />
+        <Button
+          title="スプレッドシート用コピー"
+          onPress={handleCopySpreadsheet}
           variant="outline"
           style={styles.button}
         />

@@ -98,6 +98,21 @@ const RadarChart: React.FC<RadarChartProps> = ({ data }) => {
     return { cx: center, cy: center, r: radius };
   });
 
+  // ラベル短縮名マップ
+  const labelShortMap: { [key: string]: string } = {
+    "ネットワーク": "NW",
+    "プログラミング": "PGM",
+    "開発プロセス": "PROC",
+    "セキュリティ": "SEC",
+    "フロントエンド": "FE",
+    "バックエンド": "BE",
+    "データベース": "DB",
+    "設計": "設計",
+    "マネジメント": "MGR",
+    "サーバー": "SV",
+    "クラウド": "CLD",
+  };
+
   // カテゴリーラベルを生成
   const categoryLabels = uniqueItems.map((item, i) => {
     const angle = i * angleStep;
@@ -106,10 +121,13 @@ const RadarChart: React.FC<RadarChartProps> = ({ data }) => {
     // 項目に対応する分野を取得（最初に見つかったものを使用）
     const category = data.find(summary => summary.item === item)?.category || "";
 
+    // 短縮名に変換
+    const shortLabel = labelShortMap[item] || item;
+
     return {
       x,
       y,
-      text: `${category}\n${item}`,
+      text: shortLabel,
       anchor:
         angle === 0 ? "middle" :
         angle < Math.PI ? "start" :
@@ -190,7 +208,7 @@ const RadarChart: React.FC<RadarChartProps> = ({ data }) => {
                 key={`label-${i}`}
                 x={label.x}
                 y={label.y}
-                fontSize={10}
+                fontSize={8}
                 fill={theme.colors.gray[700]}
                 textAnchor={label.anchor as any}
                 dy={label.dy}

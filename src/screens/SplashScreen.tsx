@@ -32,7 +32,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         </Typography>
 
         <Typography variant="body1" style={styles.subtitle}>
-          あなたのスキルを評価して、成長を可視化しましょう
+          スキルを評価して、成長を可視化しましょう
         </Typography>
 
         <ActivityIndicator

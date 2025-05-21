@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "skill-assessment-app",
-    "slug": "skill-assessment-app",
+    "name": "技術マップ",
+    "slug": "skill-assessment",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

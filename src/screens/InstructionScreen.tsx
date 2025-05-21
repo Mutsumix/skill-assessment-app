@@ -17,26 +17,26 @@ const InstructionScreen: React.FC<InstructionScreenProps> = ({ onStart }) => {
     {
       title: "スキル評価の方法",
       content:
-        "このアプリでは、あなたのスキルレベルを評価します。表示されるスキル項目に対して、スワイプ操作で回答してください。",
-      image: null,
+        "このアプリでは、あなたのスキルレベルを評価します。表示されるスキル項目に対して、ボタンで回答してください。",
+      image: "📝✨",
     },
     {
-      title: "スワイプ操作",
+      title: "回答方法",
       content:
-        "右にスワイプ：スキルあり\n左にスワイプ：スキルなし\n\n画面に表示されるカードを指でスワイプして回答します。",
-      image: null,
+        "「はい」：スキルあり\n「いいえ」：スキルなし\n\n画面に表示されるボタンを押して回答します。",
+      image: "⭕️❌",
     },
     {
       title: "休憩タイム",
       content:
         "分野ごとに休憩カードが表示されます。一息ついてから次の分野に進みましょう。",
-      image: null,
+      image: "☕️😌",
     },
     {
       title: "結果の確認",
       content:
         "全ての回答が完了すると、あなたのスキルレベルがレーダーチャートと一覧で表示されます。これにより、あなたの強みと弱みを視覚的に確認できます。",
-      image: null,
+      image: "📊🦸‍♂️",
     },
   ];
 
@@ -67,21 +67,11 @@ const InstructionScreen: React.FC<InstructionScreenProps> = ({ onStart }) => {
         </Typography>
 
         <ScrollView style={styles.contentContainer}>
-          {currentPageData.image && (
-            <Image
-              source={currentPageData.image}
-              style={styles.image}
-              resizeMode="contain"
-            />
-          )}
-
-          {!currentPageData.image && (
-            <View style={styles.imagePlaceholder}>
-              <Typography variant="h4" color={theme.colors.gray[400]}>
-                {currentPage + 1}
-              </Typography>
-            </View>
-          )}
+          <View style={styles.imagePlaceholder}>
+            <Text style={styles.emojiImage}>
+              {currentPageData.image}
+            </Text>
+          </View>
 
           <View style={styles.contentTextContainer}>
             {currentPageData.content.split('\n').map((line, index) => (
@@ -164,6 +154,11 @@ const styles = StyleSheet.create({
   },
   contentTextContainer: {
     marginBottom: theme.spacing.lg,
+  },
+  emojiImage: {
+    fontSize: 64,
+    textAlign: "center",
+    marginBottom: theme.spacing.md,
   },
   contentText: {
     fontSize: 16,

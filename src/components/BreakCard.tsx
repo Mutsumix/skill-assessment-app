@@ -1,5 +1,5 @@
 import React from "react";
-import { View, StyleSheet, Image, ImageSourcePropType } from "react-native";
+import { View, StyleSheet, Image, ImageSourcePropType, Text } from "react-native";
 import Card from "./Card";
 import Typography from "./Typography";
 import Button from "./Button";
@@ -16,7 +16,7 @@ import { BreakCard as BreakCardType } from "../types";
 // };
 
 interface BreakCardProps {
-  breakCard: BreakCardType;
+  breakCard: BreakCardType & { emoji?: string };
   onContinue: () => void;
 }
 
@@ -36,8 +36,18 @@ const BreakCard: React.FC<BreakCardProps> = ({ breakCard, onContinue }) => {
           <Image source={image} style={styles.image} resizeMode="contain" />
         )} */}
 
-        {/* 代替として色付きのビュー */}
-        <View style={styles.imagePlaceholder} />
+        {/* 分野ごとの絵文字を中央に表示 */}
+        <View style={styles.imagePlaceholder}>
+          {breakCard.emoji && (
+            <Text
+              style={styles.emojiText}
+              allowFontScaling={false}
+              selectable={false}
+            >
+              {breakCard.emoji}
+            </Text>
+          )}
+        </View>
 
         <Typography variant="body1" align="center" style={styles.message}>
           {breakCard.message}
@@ -79,7 +89,17 @@ const styles = StyleSheet.create({
     height: 200,
     backgroundColor: theme.colors.primary.light,
     borderRadius: theme.borderRadius.md,
-    marginVertical: theme.spacing.lg,
+    marginTop: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emojiText: {
+    fontSize: 56,
+    lineHeight: 72,
+    textAlign: "center",
+    paddingVertical: 12,
+    includeFontPadding: false,
   },
   message: {
     marginBottom: theme.spacing.xl,

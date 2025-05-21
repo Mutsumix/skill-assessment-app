@@ -3,6 +3,7 @@ import { StatusBar } from "expo-status-bar";
 import { StyleSheet, View, ActivityIndicator } from "react-native";
 import { SkillProvider } from "./src/contexts/SkillContext";
 import { BreakProvider } from "./src/contexts/BreakContext";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import SplashScreen from "./src/screens/SplashScreen";
 import InstructionScreen from "./src/screens/InstructionScreen";
 import AssessmentScreen from "./src/screens/AssessmentScreen";
@@ -85,14 +86,16 @@ export default function App() {
   };
 
   return (
-    <SkillProvider>
-      <BreakProvider>
-        <View style={styles.container}>
-          <StatusBar style="auto" />
-          {renderScreen()}
-        </View>
-      </BreakProvider>
-    </SkillProvider>
+    <SafeAreaProvider>
+      <SkillProvider>
+        <BreakProvider>
+          <View style={styles.container}>
+            <StatusBar style="auto" />
+            {renderScreen()}
+          </View>
+        </BreakProvider>
+      </SkillProvider>
+    </SafeAreaProvider>
   );
 }
 
