@@ -52,6 +52,7 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete }) => {
 
       // 分野が変わったら休憩カードを表示
       if (prevSkill.分野 !== currentSkill.分野) {
+        console.log(`分野が変わりました: ${prevSkill.分野} -> ${currentSkill.分野}`);
         setShowBreak(true);
       }
     }

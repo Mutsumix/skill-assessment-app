@@ -22,8 +22,13 @@ const RadarChart: React.FC<RadarChartProps> = ({ data }) => {
   const radius = size / 2 - 40;
   const center = size / 2;
 
-  // カテゴリー数（11角形）
-  const categoryCount = data.length;
+  // 項目数（11角形）
+  // 項目の一覧を抽出
+  const uniqueItems = Array.from(new Set(data.map(item => item.item)));
+  const categoryCount = uniqueItems.length;
+
+  console.log(`レーダーチャート - 項目数: ${categoryCount}`);
+  console.log(`レーダーチャート - 項目一覧: ${uniqueItems.join(', ')}`);
   const angleStep = (Math.PI * 2) / categoryCount;
 
   // 各レベルの最大値
@@ -38,18 +43,34 @@ const RadarChart: React.FC<RadarChartProps> = ({ data }) => {
     };
   };
 
+  // 項目ごとにデータを集計
+  const itemData = uniqueItems.map(item => {
+    const itemSummaries = data.filter(summary => summary.item === item);
+
+    // 初級、中級、上級のデータを集計
+    const beginnerTotal = itemSummaries.reduce((sum, summary) => sum + summary.beginnerTotal, 0);
+    const beginnerCount = itemSummaries.reduce((sum, summary) => sum + summary.beginnerCount, 0);
+
+    const intermediateTotal = itemSummaries.reduce((sum, summary) => sum + summary.intermediateTotal, 0);
+    const intermediateCount = itemSummaries.reduce((sum, summary) => sum + summary.intermediateCount, 0);
+
+    const advancedTotal = itemSummaries.reduce((sum, summary) => sum + summary.advancedTotal, 0);
+    const advancedCount = itemSummaries.reduce((sum, summary) => sum + summary.advancedCount, 0);
+
+    return {
+      item,
+      beginnerRatio: beginnerTotal > 0 ? beginnerCount / beginnerTotal : 0,
+      intermediateRatio: intermediateTotal > 0 ? intermediateCount / intermediateTotal : 0,
+      advancedRatio: advancedTotal > 0 ? advancedCount / advancedTotal : 0,
+    };
+  });
+
+  console.log("レーダーチャート - 項目データ:", itemData);
+
   // 初級、中級、上級のデータを正規化
-  const beginnerData = data.map((item) =>
-    item.beginnerCount / item.beginnerTotal || 0
-  );
-
-  const intermediateData = data.map((item, i) =>
-    beginnerData[i] + (item.intermediateCount / item.intermediateTotal || 0)
-  );
-
-  const advancedData = data.map((item, i) =>
-    intermediateData[i] + (item.advancedCount / item.advancedTotal || 0)
-  );
+  const beginnerData = itemData.map(item => item.beginnerRatio);
+  const intermediateData = itemData.map(item => item.beginnerRatio + item.intermediateRatio);
+  const advancedData = itemData.map(item => item.beginnerRatio + item.intermediateRatio + item.advancedRatio);
 
   // ポリゴンの頂点を生成
   const generatePolygonPoints = (values: number[]) => {
@@ -76,13 +97,17 @@ const RadarChart: React.FC<RadarChartProps> = ({ data }) => {
   });
 
   // カテゴリーラベルを生成
-  const categoryLabels = data.map((item, i) => {
+  const categoryLabels = uniqueItems.map((item, i) => {
     const angle = i * angleStep;
     const { x, y } = getCoordinates(angle, maxValue * 1.1);
+
+    // 項目に対応する分野を取得（最初に見つかったものを使用）
+    const category = data.find(summary => summary.item === item)?.category || "";
+
     return {
       x,
       y,
-      text: `${item.category}\n${item.item}`,
+      text: `${category}\n${item}`,
       anchor:
         angle === 0 ? "middle" :
         angle < Math.PI ? "start" :
