@@ -4,6 +4,7 @@ export interface Skill {
   項目: string;
   レベル: "初級" | "中級" | "上級";
   スキル: string;
+  解説: string; // スキルの詳細な説明
   id: number; // 一意のID
 }
 

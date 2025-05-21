@@ -19,8 +19,8 @@ const RadarChart: React.FC<RadarChartProps> = ({ data }) => {
   // 画面の幅に基づいてチャートのサイズを決定
   const screenWidth = Dimensions.get("window").width;
   const size = Math.min(screenWidth - 40, 500);
-  // チャートを大きくして、スクロールできるようにする
-  const chartSize = Math.max(size, 600);
+  // チャートのサイズを調整して、スクロールなしで全体が見えるようにする
+  const chartSize = size;
   const radius = chartSize / 2 - 40;
   const center = chartSize / 2;
 

@@ -122,19 +122,29 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete }) => {
 
             <View style={styles.divider} />
 
+            {currentSkill.解説 ? (
+              <Typography variant="body2" style={styles.description}>
+                {currentSkill.解説}
+              </Typography>
+            ) : (
+              <Typography variant="body2" style={styles.description}>
+                {`${currentSkill.スキル}のスキルを持っているかどうかを評価します。`}
+              </Typography>
+            )}
+
             <Typography variant="body1" style={styles.question}>
               このスキルを持っていますか？
             </Typography>
 
             <View style={styles.buttonContainer}>
               <Button
-                title="はい（スキルあり）"
+                title="はい"
                 onPress={handleYes}
                 variant="primary"
                 style={styles.button}
               />
               <Button
-                title="いいえ（スキルなし）"
+                title="いいえ"
                 onPress={handleNo}
                 variant="outline"
                 style={styles.button}
@@ -199,6 +209,9 @@ const styles = StyleSheet.create({
   button: {
     flex: 1,
     marginHorizontal: theme.spacing.xs,
+  },
+  description: {
+    marginBottom: theme.spacing.md,
   },
   footer: {
     marginTop: theme.spacing.lg,
