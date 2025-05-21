@@ -1,5 +1,5 @@
 import React from "react";
-import { View, StyleSheet, Dimensions, Text } from "react-native";
+import { View, StyleSheet, Dimensions, Text, ScrollView } from "react-native";
 import Svg, { Polygon, Line, Circle, Text as SvgText } from "react-native-svg";
 import { SkillSummary } from "../types";
 import theme from "../styles/theme";
@@ -19,8 +19,10 @@ const RadarChart: React.FC<RadarChartProps> = ({ data }) => {
   // 画面の幅に基づいてチャートのサイズを決定
   const screenWidth = Dimensions.get("window").width;
   const size = Math.min(screenWidth - 40, 500);
-  const radius = size / 2 - 40;
-  const center = size / 2;
+  // チャートを大きくして、スクロールできるようにする
+  const chartSize = Math.max(size, 600);
+  const radius = chartSize / 2 - 40;
+  const center = chartSize / 2;
 
   // 項目数（11角形）
   // 項目の一覧を抽出
@@ -92,7 +94,7 @@ const RadarChart: React.FC<RadarChartProps> = ({ data }) => {
 
   // 同心円を生成
   const circles = [1, 2, 3].map((level) => {
-    const radius = (level / maxValue) * (size / 2 - 40);
+    const radius = (level / maxValue) * (chartSize / 2 - 40);
     return { cx: center, cy: center, r: radius };
   });
 
@@ -122,77 +124,83 @@ const RadarChart: React.FC<RadarChartProps> = ({ data }) => {
         スキル習得状況
       </Typography>
 
-      <View style={styles.chartContainer}>
-        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-          {/* 同心円 */}
-          {circles.map((circle, i) => (
-            <Circle
-              key={`circle-${i}`}
-              cx={circle.cx}
-              cy={circle.cy}
-              r={circle.r}
-              stroke={theme.colors.gray[300]}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={true}
+        contentContainerStyle={styles.scrollViewContent}
+      >
+        <View style={styles.chartContainer}>
+          <Svg width={chartSize} height={chartSize} viewBox={`0 0 ${chartSize} ${chartSize}`}>
+            {/* 同心円 */}
+            {circles.map((circle, i) => (
+              <Circle
+                key={`circle-${i}`}
+                cx={circle.cx}
+                cy={circle.cy}
+                r={circle.r}
+                stroke={theme.colors.gray[300]}
+                strokeWidth={1}
+                fill="none"
+              />
+            ))}
+
+            {/* 軸の線 */}
+            {axisLines.map((line, i) => (
+              <Line
+                key={`axis-${i}`}
+                x1={line.x1}
+                y1={line.y1}
+                x2={line.x2}
+                y2={line.y2}
+                stroke={theme.colors.gray[300]}
+                strokeWidth={1}
+              />
+            ))}
+
+            {/* 上級レベルのポリゴン */}
+            <Polygon
+              points={generatePolygonPoints(advancedData)}
+              fill={theme.colors.primary.dark}
+              fillOpacity={0.3}
+              stroke={theme.colors.primary.dark}
               strokeWidth={1}
-              fill="none"
             />
-          ))}
 
-          {/* 軸の線 */}
-          {axisLines.map((line, i) => (
-            <Line
-              key={`axis-${i}`}
-              x1={line.x1}
-              y1={line.y1}
-              x2={line.x2}
-              y2={line.y2}
-              stroke={theme.colors.gray[300]}
+            {/* 中級レベルのポリゴン */}
+            <Polygon
+              points={generatePolygonPoints(intermediateData)}
+              fill={theme.colors.primary.main}
+              fillOpacity={0.3}
+              stroke={theme.colors.primary.main}
               strokeWidth={1}
             />
-          ))}
 
-          {/* 上級レベルのポリゴン */}
-          <Polygon
-            points={generatePolygonPoints(advancedData)}
-            fill={theme.colors.primary.dark}
-            fillOpacity={0.3}
-            stroke={theme.colors.primary.dark}
-            strokeWidth={1}
-          />
+            {/* 初級レベルのポリゴン */}
+            <Polygon
+              points={generatePolygonPoints(beginnerData)}
+              fill={theme.colors.primary.light}
+              fillOpacity={0.3}
+              stroke={theme.colors.primary.light}
+              strokeWidth={1}
+            />
 
-          {/* 中級レベルのポリゴン */}
-          <Polygon
-            points={generatePolygonPoints(intermediateData)}
-            fill={theme.colors.primary.main}
-            fillOpacity={0.3}
-            stroke={theme.colors.primary.main}
-            strokeWidth={1}
-          />
-
-          {/* 初級レベルのポリゴン */}
-          <Polygon
-            points={generatePolygonPoints(beginnerData)}
-            fill={theme.colors.primary.light}
-            fillOpacity={0.3}
-            stroke={theme.colors.primary.light}
-            strokeWidth={1}
-          />
-
-          {/* カテゴリーラベル */}
-          {categoryLabels.map((label, i) => (
-            <SvgText
-              key={`label-${i}`}
-              x={label.x}
-              y={label.y}
-              fontSize={8}
-              fill={theme.colors.gray[700]}
-              textAnchor={label.anchor as any}
-              dy={label.dy}
-            >
-              {label.text}
-            </SvgText>
-          ))}
-        </Svg>
-      </View>
+            {/* カテゴリーラベル */}
+            {categoryLabels.map((label, i) => (
+              <SvgText
+                key={`label-${i}`}
+                x={label.x}
+                y={label.y}
+                fontSize={10}
+                fill={theme.colors.gray[700]}
+                textAnchor={label.anchor as any}
+                dy={label.dy}
+              >
+                {label.text}
+              </SvgText>
+            ))}
+          </Svg>
+        </View>
+      </ScrollView>
 
       {/* 凡例 */}
       <View style={styles.legend}>
@@ -220,6 +228,10 @@ const styles = StyleSheet.create({
   },
   title: {
     marginBottom: theme.spacing.md,
+  },
+  scrollViewContent: {
+    alignItems: "center",
+    justifyContent: "center",
   },
   chartContainer: {
     alignItems: "center",

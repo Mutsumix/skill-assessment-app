@@ -30,7 +30,11 @@ const SkillList: React.FC<SkillListProps> = ({ data }) => {
         スキル習得状況一覧
       </Typography>
 
-      <ScrollView style={styles.scrollView}>
+      <ScrollView
+        style={styles.scrollView}
+        nestedScrollEnabled={true}
+        showsVerticalScrollIndicator={true}
+      >
         {Object.entries(groupedData).map(([category, items]) => (
           <View key={category} style={styles.categorySection}>
             <Typography variant="h5" style={styles.categoryTitle}>
@@ -125,7 +129,8 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   scrollView: {
-    maxHeight: 400,
+    maxHeight: 500, // 高さを増やす
+    flexGrow: 1,
   },
   categorySection: {
     marginBottom: theme.spacing.lg,

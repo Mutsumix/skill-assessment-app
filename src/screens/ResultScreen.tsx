@@ -54,7 +54,12 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ onRestart }) => {
         </Typography>
       </View>
 
-      <ScrollView style={styles.scrollView}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollViewContent}
+        showsVerticalScrollIndicator={true}
+        nestedScrollEnabled={true}
+      >
         {/* レーダーチャート */}
         <RadarChart data={summaries} />
 
@@ -99,6 +104,9 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  scrollViewContent: {
+    paddingBottom: theme.spacing.xl,
   },
   footer: {
     flexDirection: "row",
