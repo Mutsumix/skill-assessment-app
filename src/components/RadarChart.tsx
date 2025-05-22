@@ -11,32 +11,20 @@ interface RadarChartProps {
 }
 
 const RadarChart: React.FC<RadarChartProps> = ({ data }) => {
-  // データが空の場合は何も表示しない
   if (!data || data.length === 0) {
     return null;
   }
 
-  // 画面の幅に基づいてチャートのサイズを決定
   const screenWidth = Dimensions.get("window").width;
-  const size = Math.min(screenWidth - 40, 500);
-  // チャートのサイズを調整して、スクロールなしで全体が見えるようにする
-  const chartSize = size;
+  const chartSize = Math.min(screenWidth - 40, 340);
   const radius = chartSize / 2 - 40;
   const center = chartSize / 2;
 
-  // 項目数（11角形）
-  // 項目の一覧を抽出
   const uniqueItems = Array.from(new Set(data.map(item => item.item)));
   const categoryCount = uniqueItems.length;
-
-  console.log(`レーダーチャート - 項目数: ${categoryCount}`);
-  console.log(`レーダーチャート - 項目一覧: ${uniqueItems.join(', ')}`);
   const angleStep = (Math.PI * 2) / categoryCount;
+  const maxValue = 3;
 
-  // 各レベルの最大値
-  const maxValue = 3; // 初級・中級・上級の3レベル
-
-  // 座標を計算する関数
   const getCoordinates = (angle: number, value: number) => {
     const adjustedValue = (value / maxValue) * radius;
     return {
@@ -45,17 +33,12 @@ const RadarChart: React.FC<RadarChartProps> = ({ data }) => {
     };
   };
 
-  // 項目ごとにデータを集計
   const itemData = uniqueItems.map(item => {
     const itemSummaries = data.filter(summary => summary.item === item);
-
-    // 初級、中級、上級のデータを集計
     const beginnerTotal = itemSummaries.reduce((sum, summary) => sum + summary.beginnerTotal, 0);
     const beginnerCount = itemSummaries.reduce((sum, summary) => sum + summary.beginnerCount, 0);
-
     const intermediateTotal = itemSummaries.reduce((sum, summary) => sum + summary.intermediateTotal, 0);
     const intermediateCount = itemSummaries.reduce((sum, summary) => sum + summary.intermediateCount, 0);
-
     const advancedTotal = itemSummaries.reduce((sum, summary) => sum + summary.advancedTotal, 0);
     const advancedCount = itemSummaries.reduce((sum, summary) => sum + summary.advancedCount, 0);
 
@@ -67,14 +50,10 @@ const RadarChart: React.FC<RadarChartProps> = ({ data }) => {
     };
   });
 
-  console.log("レーダーチャート - 項目データ:", itemData);
-
-  // 初級、中級、上級のデータを正規化
   const beginnerData = itemData.map(item => item.beginnerRatio);
   const intermediateData = itemData.map(item => item.beginnerRatio + item.intermediateRatio);
   const advancedData = itemData.map(item => item.beginnerRatio + item.intermediateRatio + item.advancedRatio);
 
-  // ポリゴンの頂点を生成
   const generatePolygonPoints = (values: number[]) => {
     return values
       .map((value, i) => {
@@ -85,55 +64,15 @@ const RadarChart: React.FC<RadarChartProps> = ({ data }) => {
       .join(" ");
   };
 
-  // 軸の線を生成
   const axisLines = Array.from({ length: categoryCount }).map((_, i) => {
     const angle = i * angleStep;
     const { x, y } = getCoordinates(angle, maxValue);
     return { x1: center, y1: center, x2: x, y2: y };
   });
 
-  // 同心円を生成
   const circles = [1, 2, 3].map((level) => {
     const radius = (level / maxValue) * (chartSize / 2 - 40);
     return { cx: center, cy: center, r: radius };
-  });
-
-  // ラベル短縮名マップ
-  const labelShortMap: { [key: string]: string } = {
-    "ネットワーク": "NW",
-    "プログラミング": "PGM",
-    "開発プロセス": "PROC",
-    "セキュリティ": "SEC",
-    "フロントエンド": "FE",
-    "バックエンド": "BE",
-    "データベース": "DB",
-    "設計": "設計",
-    "マネジメント": "MGR",
-    "サーバー": "SV",
-    "クラウド": "CLD",
-  };
-
-  // カテゴリーラベルを生成
-  const categoryLabels = uniqueItems.map((item, i) => {
-    const angle = i * angleStep;
-    const { x, y } = getCoordinates(angle, maxValue * 1.1);
-
-    // 項目に対応する分野を取得（最初に見つかったものを使用）
-    const category = data.find(summary => summary.item === item)?.category || "";
-
-    // 短縮名に変換
-    const shortLabel = labelShortMap[item] || item;
-
-    return {
-      x,
-      y,
-      text: shortLabel,
-      anchor:
-        angle === 0 ? "middle" :
-        angle < Math.PI ? "start" :
-        angle === Math.PI ? "middle" : "end",
-      dy: angle === Math.PI / 2 ? "1em" : angle === 3 * Math.PI / 2 ? "-1em" : 0,
-    };
   });
 
   return (
@@ -141,84 +80,118 @@ const RadarChart: React.FC<RadarChartProps> = ({ data }) => {
       <Typography variant="h4" align="center" style={styles.title}>
         スキル習得状況
       </Typography>
+      <View style={styles.chartContainer}>
+        <Svg width={chartSize} height={chartSize} viewBox={`0 0 ${chartSize} ${chartSize}`}>
+          {/* 同心円 */}
+          {circles.map((circle, i) => (
+            <Circle
+              key={`circle-${i}`}
+              cx={circle.cx}
+              cy={circle.cy}
+              r={circle.r}
+              stroke={theme.colors.gray[300]}
+              strokeWidth={1}
+              fill="none"
+            />
+          ))}
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={true}
-        contentContainerStyle={styles.scrollViewContent}
-      >
-        <View style={styles.chartContainer}>
-          <Svg width={chartSize} height={chartSize} viewBox={`0 0 ${chartSize} ${chartSize}`}>
-            {/* 同心円 */}
-            {circles.map((circle, i) => (
-              <Circle
-                key={`circle-${i}`}
-                cx={circle.cx}
-                cy={circle.cy}
-                r={circle.r}
-                stroke={theme.colors.gray[300]}
-                strokeWidth={1}
-                fill="none"
-              />
-            ))}
-
-            {/* 軸の線 */}
-            {axisLines.map((line, i) => (
-              <Line
-                key={`axis-${i}`}
-                x1={line.x1}
-                y1={line.y1}
-                x2={line.x2}
-                y2={line.y2}
-                stroke={theme.colors.gray[300]}
-                strokeWidth={1}
-              />
-            ))}
-
-            {/* 上級レベルのポリゴン */}
-            <Polygon
-              points={generatePolygonPoints(advancedData)}
-              fill={theme.colors.primary.dark}
-              fillOpacity={0.3}
-              stroke={theme.colors.primary.dark}
+          {/* 軸の線 */}
+          {axisLines.map((line, i) => (
+            <Line
+              key={`axis-${i}`}
+              x1={line.x1}
+              y1={line.y1}
+              x2={line.x2}
+              y2={line.y2}
+              stroke={theme.colors.gray[300]}
               strokeWidth={1}
             />
+          ))}
 
-            {/* 中級レベルのポリゴン */}
-            <Polygon
-              points={generatePolygonPoints(intermediateData)}
-              fill={theme.colors.primary.main}
-              fillOpacity={0.3}
-              stroke={theme.colors.primary.main}
-              strokeWidth={1}
-            />
+          {/* 上級レベルのポリゴン */}
+          <Polygon
+            points={generatePolygonPoints(advancedData)}
+            fill={theme.colors.primary.dark}
+            fillOpacity={0.3}
+            stroke={theme.colors.primary.dark}
+            strokeWidth={1}
+          />
 
-            {/* 初級レベルのポリゴン */}
-            <Polygon
-              points={generatePolygonPoints(beginnerData)}
-              fill={theme.colors.primary.light}
-              fillOpacity={0.3}
-              stroke={theme.colors.primary.light}
-              strokeWidth={1}
-            />
+          {/* 中級レベルのポリゴン */}
+          <Polygon
+            points={generatePolygonPoints(intermediateData)}
+            fill={theme.colors.primary.main}
+            fillOpacity={0.3}
+            stroke={theme.colors.primary.main}
+            strokeWidth={1}
+          />
 
-            {/* カテゴリーラベル */}
-            {categoryLabels.map((label, i) => (
+          {/* 初級レベルのポリゴン */}
+          <Polygon
+            points={generatePolygonPoints(beginnerData)}
+            fill={theme.colors.primary.light}
+            fillOpacity={0.3}
+            stroke={theme.colors.primary.light}
+            strokeWidth={1}
+          />
+
+          {/* 各頂点にラベルを追加 */}
+          {uniqueItems.map((item, i) => {
+            const angle = i * angleStep;
+            // ラベルの位置を調整（チャートに近づける）
+            const labelRadius = radius + 10;
+            const x = center + labelRadius * Math.cos(angle - Math.PI / 2);
+            const y = center + labelRadius * Math.sin(angle - Math.PI / 2);
+
+            // テキストの配置を調整
+            let textAnchor: "start" | "middle" | "end" = "middle";
+            let dy = "0.35em"; // デフォルトの垂直位置調整
+
+            // 角度に応じてテキストの配置を調整
+            if (angle < 0.25 * Math.PI || angle > 1.75 * Math.PI) {
+              textAnchor = "middle"; // 上部
+              dy = "-0.5em";
+            } else if (angle >= 0.25 * Math.PI && angle < 0.75 * Math.PI) {
+              textAnchor = "start"; // 右側
+              dy = "0.35em";
+            } else if (angle >= 0.75 * Math.PI && angle < 1.25 * Math.PI) {
+              textAnchor = "middle"; // 下部
+              dy = "1em";
+            } else {
+              textAnchor = "end"; // 左側
+              dy = "0.35em";
+            }
+
+            // 項目名を表示するための処理
+            let displayText = item;
+
+            // 特定の項目名に対する特別な処理
+            if (item === "開発プロセス") {
+              displayText = "開発\nプロセス";
+            } else if (item === "プログラミング") {
+              displayText = "PG";
+            } else if (item.length > 8) {
+              // 長い項目名は短く表示
+              displayText = item.substring(0, 7) + "..";
+            }
+
+            return (
               <SvgText
                 key={`label-${i}`}
-                x={label.x}
-                y={label.y}
-                fontSize={8}
+                x={x}
+                y={y}
+                textAnchor={textAnchor}
+                dy={dy}
+                fontSize="8"
+                fontWeight="bold"
                 fill={theme.colors.gray[700]}
-                textAnchor={label.anchor as any}
-                dy={label.dy}
               >
-                {label.text}
+                {displayText}
               </SvgText>
-            ))}
-          </Svg>
-        </View>
-      </ScrollView>
+            );
+          })}
+        </Svg>
+      </View>
 
       {/* 凡例 */}
       <View style={styles.legend}>

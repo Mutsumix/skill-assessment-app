@@ -1,6 +1,6 @@
 import React from "react";
-import { View, StyleSheet, ScrollView, SafeAreaView, Share, Linking, Alert, Image } from "react-native";
-import Clipboard from "expo-clipboard";
+import { View, StyleSheet, ScrollView, SafeAreaView, Share, Linking, Alert, Image, Clipboard } from "react-native";
+// import Clipboard from "expo-clipboard";
 import { captureRef } from "react-native-view-shot";
 import { Platform } from "react-native";
 import Typography from "../components/Typography";
@@ -20,47 +20,87 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ onRestart }) => {
   // レーダーチャート画像付きでX共有
   const radarRef = React.useRef<View>(null);
 
-  // Xで共有（intent/post URL遷移）
+  // imgurアップロード関数
+  const uploadToImgur = async (base64: string): Promise<string | null> => {
+    try {
+      const response = await fetch("https://api.imgur.com/3/image", {
+        method: "POST",
+        headers: {
+          Authorization: "Client-ID 77b8e7e9bcc0a96",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          image: base64,
+          type: "base64",
+        }),
+      });
+      const json = await response.json();
+      if (json.success && json.data && json.data.link) {
+        return json.data.link;
+      }
+      return null;
+    } catch (e) {
+      console.error("imgur upload error", e);
+      return null;
+    }
+  };
+
+  // Xで共有（intent/post URL遷移＋imgur画像URL）
   const handleShare = async () => {
-    // 投稿文を生成
-    const resultText = summaries
-      .map(
-        (item) =>
-          `${item.category} > ${item.item}:\n` +
-          `初級: ${item.beginnerCount}/${item.beginnerTotal}\n` +
-          `中級: ${item.intermediateCount}/${item.intermediateTotal}\n` +
-          `上級: ${item.advancedCount}/${item.advancedTotal}\n`
-      )
-      .join("\n");
+    try {
+      // レーダーチャート部分を画像としてキャプチャ（base64）
+      const base64 = await captureRef(radarRef, {
+        format: "png",
+        quality: 1,
+        result: "base64",
+      });
 
-    // X intent/post URLを生成
-    const tweetText = encodeURIComponent(
-      `スキル習得状況評価結果\n\n${resultText}`
-    );
-    const url = `https://x.com/intent/post?text=${tweetText}`;
+      // imgurにアップロード
+      const imgurUrl = await uploadToImgur(base64);
 
-    // Xアプリまたはブラウザで開く
-    const supported = await Linking.canOpenURL(url);
-    if (supported) {
-      Linking.openURL(url);
-    } else {
-      Alert.alert("エラー", "Xの投稿画面を開けませんでした。");
+      // 投稿文
+      const tweetText = encodeURIComponent("技術マップでスキルチェックしたよ！");
+      // 画像URLを投稿に含める
+      const url = imgurUrl
+        ? `https://x.com/intent/post?text=${tweetText}&url=${encodeURIComponent(imgurUrl)}`
+        : `https://x.com/intent/post?text=${tweetText}`;
+
+      // Xアプリまたはブラウザで開く
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        Linking.openURL(url);
+      } else {
+        Alert.alert("エラー", "Xの投稿画面を開けませんでした。");
+      }
+    } catch (e) {
+      Alert.alert("エラー", "画像のアップロードまたは共有に失敗しました。");
     }
   };
 
   // スプレッドシート用コピー
   const handleCopySpreadsheet = async () => {
-    // skillsの順番でTRUE/FALSEを出力
-    const answerMap: { [skillId: number]: boolean } = {};
-    userAnswers.forEach((a) => {
-      answerMap[a.skillId] = a.hasSkill;
-    });
-    const lines = skills.map(
-      (s) => `${s.スキル}\t${answerMap[s.id] ? "TRUE" : "FALSE"}`
-    );
-    const text = lines.join("\n");
-    await Clipboard.setStringAsync(text);
-    Alert.alert("コピー完了", "スプレッドシート用データをクリップボードにコピーしました。");
+    try {
+      // skillsの順番でTRUE/FALSEを出力
+      const answerMap: { [skillId: number]: boolean } = {};
+      userAnswers.forEach((a) => {
+        answerMap[a.skillId] = a.hasSkill;
+      });
+
+      // スプレッドシートの形式に合わせる（D列にスキル名、E列に習得状況）
+      const lines = skills.map(
+        (s) => `${s.スキル}\t${answerMap[s.id] !== undefined ? (answerMap[s.id] ? "TRUE" : "FALSE") : "FALSE"}`
+      );
+
+      const text = lines.join("\n");
+      console.log("コピーするテキスト:", text); // デバッグ用
+
+      // クリップボードにコピー
+      Clipboard.setString(text);
+      Alert.alert("コピー完了", "スプレッドシート用データをクリップボードにコピーしました。");
+    } catch (e) {
+      console.error("クリップボードコピーエラー:", e);
+      Alert.alert("エラー", "データのコピーに失敗しました。");
+    }
   };
 
   // 再評価
@@ -97,22 +137,7 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ onRestart }) => {
 
       <View style={styles.footer}>
         <Button
-          title="Xで共有"
-          onPress={handleShare}
-          variant="outline"
-          style={styles.button}
-          icon={
-            <Image
-              source={{
-                uri: "https://abs.twimg.com/favicons/twitter.2.ico",
-              }}
-              style={{ width: 18, height: 18, marginRight: 6 }}
-              resizeMode="contain"
-            />
-          }
-        />
-        <Button
-          title="スプレッドシート用コピー"
+          title="結果をコピー"
           onPress={handleCopySpreadsheet}
           variant="outline"
           style={styles.button}
