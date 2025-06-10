@@ -2,7 +2,7 @@
   "expo": {
     "name": "技術マップ",
     "slug": "skill-assessment",
-    "version": "1.1.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -15,6 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.mutsumix.skillassessment",
+      "buildNumber": "2.0.0",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -25,7 +26,8 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.mutsumix.skillassessment"
+      "package": "com.mutsumix.skillassessment",
+      "versionCode": 2
     },
     "web": {
       "favicon": "./assets/favicon.png"
