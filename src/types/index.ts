@@ -38,3 +38,49 @@ export interface BreakCard {
   title: string;
   message: string;
 }
+
+// 評価履歴の型定義
+export interface AssessmentHistory {
+  id: string;
+  date: Date;
+  results: SkillSummary[];
+  userAnswers: UserAnswer[];
+  totalSkills: number;
+  completionRate: number;
+  skillCounts: {
+    beginnerTotal: number;
+    intermediateTotal: number;
+    advancedTotal: number;
+    beginnerAcquired: number;
+    intermediateAcquired: number;
+    advancedAcquired: number;
+  };
+}
+
+// 進捗比較の型定義
+export interface ProgressComparison {
+  category: string;
+  item: string;
+  previousTotal: number;
+  currentTotal: number;
+  improvement: number; // 改善されたスキル数
+  isImproved: boolean;
+}
+
+// 途中保存状態の型定義
+export interface SavedProgress {
+  currentSkillIndex: number;
+  userAnswers: UserAnswer[];
+  progress: number;
+  lastSavedDate: Date;
+}
+
+// ユーザープロフィールの型定義
+export interface UserProfile {
+  id: string;
+  name?: string;
+  department?: string;
+  role?: string;
+  assessmentHistory: AssessmentHistory[];
+  savedProgress?: SavedProgress;
+}

@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { View, StyleSheet, SafeAreaView } from "react-native";
+import { View, StyleSheet, SafeAreaView, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Typography from "../components/Typography";
 import ProgressBar from "../components/ProgressBar";
@@ -12,9 +12,10 @@ import { useBreakContext } from "../contexts/BreakContext";
 
 interface AssessmentScreenProps {
   onComplete: () => void;
+  onBackToHome: () => void;
 }
 
-const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete }) => {
+const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackToHome }) => {
   const {
     skills,
     currentSkillIndex,
@@ -23,6 +24,11 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete }) => {
     nextSkill,
     prevSkill,
     calculateSummaries,
+    saveProgress,
+    hasSavedProgress,
+    userAnswers,
+    hasUnsavedResult,
+    saveAssessmentResult,
   } = useSkillContext();
 
   // SafeAreaのinsets取得
@@ -95,6 +101,59 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete }) => {
     nextBreak();
   };
 
+
+
+  // トップに戻る
+  const handleBackToHome = () => {
+    // 評価完了後の結果画面から戻る場合は、結果を自動保存してからトップに戻る
+    if (currentSkillIndex >= skills.length && hasUnsavedResult) {
+      Alert.alert(
+        "結果を保存しますか？",
+        "評価が完了しました。結果を履歴に保存してトップに戻りますか？",
+        [
+          {
+            text: "保存せずに戻る",
+            style: "destructive",
+            onPress: onBackToHome
+          },
+          { text: "キャンセル", style: "cancel" },
+          {
+            text: "保存して戻る",
+            onPress: async () => {
+              await saveAssessmentResult();
+              onBackToHome();
+            }
+          }
+        ]
+      );
+    }
+    // 評価途中で進捗がある場合の確認
+    else if (userAnswers.length > 0 && currentSkillIndex < skills.length) {
+      Alert.alert(
+        "途中の記録を保存しますか？",
+        "評価の途中です。進捗を保存してトップに戻りますか？",
+        [
+          {
+            text: "保存せずに戻る",
+            style: "destructive",
+            onPress: onBackToHome
+          },
+          { text: "キャンセル", style: "cancel" },
+          {
+            text: "保存して戻る",
+            onPress: async () => {
+              await saveProgress();
+              onBackToHome();
+            }
+          }
+        ]
+      );
+    } else {
+      // その他の場合（評価開始前、または既に保存済み）はそのまま戻る
+      onBackToHome();
+    }
+  };
+
   // 読み込み中または全てのスキルが評価された場合は何も表示しない
   if (!currentSkill) {
     return null;
@@ -103,9 +162,20 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete }) => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top }]}>
-        <Typography variant="h5" style={styles.title}>
-          スキル評価
-        </Typography>
+        <View style={styles.headerRow}>
+          <Typography variant="h5" style={styles.title}>
+            スキル評価
+          </Typography>
+          <View style={styles.headerButtons}>
+            <Button
+              title="トップ"
+              onPress={handleBackToHome}
+              variant="outline"
+              style={styles.homeButton}
+              size="small"
+            />
+          </View>
+        </View>
         <ProgressBar progress={progress} showLabel />
 
         {/* 分野ごとの設問バランス可視化 */}
@@ -243,8 +313,22 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: theme.spacing.lg,
   },
-  title: {
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: theme.spacing.sm,
+  },
+  headerButtons: {
+    flexDirection: "row",
+    gap: theme.spacing.xs,
+  },
+  homeButton: {
+    paddingHorizontal: theme.spacing.sm,
+  },
+  title: {
+    marginBottom: 0,
+    flex: 1,
   },
   content: {
     flex: 1,

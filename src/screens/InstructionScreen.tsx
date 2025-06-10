@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Image, Text } from "react-native";
 import Typography from "../components/Typography";
 import Button from "../components/Button";
 import Card from "../components/Card";
 import theme from "../styles/theme";
+import { useSkillContext } from "../contexts/SkillContext";
 
 interface InstructionScreenProps {
   onStart: () => void;
@@ -11,6 +12,7 @@ interface InstructionScreenProps {
 
 const InstructionScreen: React.FC<InstructionScreenProps> = ({ onStart }) => {
   const [currentPage, setCurrentPage] = useState(0);
+  const { hasSavedProgress, loadSavedProgress } = useSkillContext();
 
   // 説明ページのコンテンツ
   const pages = [
@@ -56,6 +58,14 @@ const InstructionScreen: React.FC<InstructionScreenProps> = ({ onStart }) => {
   const prevPage = () => {
     if (currentPage > 0) {
       setCurrentPage(currentPage - 1);
+    }
+  };
+
+  // 途中から再開
+  const handleResume = async () => {
+    const loaded = await loadSavedProgress();
+    if (loaded) {
+      onStart();
     }
   };
 
@@ -110,6 +120,21 @@ const InstructionScreen: React.FC<InstructionScreenProps> = ({ onStart }) => {
             style={styles.button}
           />
         </View>
+
+        {/* 保存された進捗がある場合は途中から再開ボタンを表示 */}
+        {hasSavedProgress && currentPage === pages.length - 1 && (
+          <View style={styles.resumeContainer}>
+            <Typography variant="caption" style={styles.resumeText}>
+              保存された進捗があります
+            </Typography>
+            <Button
+              title="途中から再開"
+              onPress={handleResume}
+              variant="secondary"
+              style={styles.resumeButton}
+            />
+          </View>
+        )}
       </Card>
     </View>
   );
@@ -190,6 +215,17 @@ const styles = StyleSheet.create({
   button: {
     flex: 1,
     marginHorizontal: theme.spacing.xs,
+  },
+  resumeContainer: {
+    marginTop: theme.spacing.md,
+    alignItems: "center",
+  },
+  resumeText: {
+    marginBottom: theme.spacing.xs,
+    color: theme.colors.primary.main,
+  },
+  resumeButton: {
+    width: "100%",
   },
 });
 

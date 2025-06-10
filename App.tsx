@@ -1,26 +1,35 @@
 import React, { useState, useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet, View, ActivityIndicator } from "react-native";
-import { SkillProvider } from "./src/contexts/SkillContext";
+import { SkillProvider, useSkillContext } from "./src/contexts/SkillContext";
 import { BreakProvider } from "./src/contexts/BreakContext";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import SplashScreen from "./src/screens/SplashScreen";
+import HomeScreen from "./src/screens/HomeScreen";
 import InstructionScreen from "./src/screens/InstructionScreen";
 import AssessmentScreen from "./src/screens/AssessmentScreen";
 import ResultScreen from "./src/screens/ResultScreen";
+import HistoryScreen from "./src/screens/HistoryScreen";
 import theme from "./src/styles/theme";
+import { AssessmentHistory } from "./src/types";
 
 // アプリの画面
 enum AppScreen {
   SPLASH,
+  HOME,
   INSTRUCTION,
   ASSESSMENT,
   RESULT,
+  HISTORY,
+  HISTORY_DETAIL,
 }
 
-export default function App() {
+// 内部コンポーネントを分離してSkillContextを使用可能にする
+function AppContent() {
   const [currentScreen, setCurrentScreen] = useState<AppScreen>(AppScreen.SPLASH);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedHistory, setSelectedHistory] = useState<AssessmentHistory | null>(null);
+  const { resetAssessment } = useSkillContext();
 
   // アプリの初期化
   useEffect(() => {
@@ -41,7 +50,23 @@ export default function App() {
 
   // スプラッシュ画面の完了時
   const handleSplashComplete = () => {
+    setCurrentScreen(AppScreen.HOME);
+  };
+
+  // ホーム画面から新規評価開始
+  const handleStartNew = async () => {
+    await resetAssessment(); // 既存のデータをクリア
     setCurrentScreen(AppScreen.INSTRUCTION);
+  };
+
+  // ホーム画面から進捗再開
+  const handleResumeProgress = () => {
+    setCurrentScreen(AppScreen.ASSESSMENT);
+  };
+
+  // ホーム画面から履歴表示
+  const handleViewHistory = () => {
+    setCurrentScreen(AppScreen.HISTORY);
   };
 
   // 説明画面の完了時
@@ -54,10 +79,31 @@ export default function App() {
     setCurrentScreen(AppScreen.RESULT);
   };
 
-  // 結果画面からの再開始
-  const handleRestart = () => {
-    // 評価をリセットして評価画面に戻る
-    setCurrentScreen(AppScreen.ASSESSMENT);
+  // 評価画面からホームに戻る
+  const handleBackToHome = () => {
+    setCurrentScreen(AppScreen.HOME);
+  };
+
+  // 結果画面からホームに戻る
+  const handleResultToHome = () => {
+    setCurrentScreen(AppScreen.HOME);
+  };
+
+  // 履歴画面から戻る
+  const handleHistoryBack = () => {
+    setCurrentScreen(AppScreen.HOME);
+  };
+
+  // 履歴詳細表示
+  const handleViewHistoryDetail = (history: AssessmentHistory) => {
+    setSelectedHistory(history);
+    setCurrentScreen(AppScreen.HISTORY_DETAIL);
+  };
+
+  // 履歴詳細から戻る
+  const handleHistoryDetailBack = () => {
+    setSelectedHistory(null);
+    setCurrentScreen(AppScreen.HISTORY);
   };
 
   // 読み込み中の表示
@@ -74,25 +120,58 @@ export default function App() {
     switch (currentScreen) {
       case AppScreen.SPLASH:
         return <SplashScreen onComplete={handleSplashComplete} />;
+      case AppScreen.HOME:
+        return (
+          <HomeScreen
+            onStartNew={handleStartNew}
+            onResumeProgress={handleResumeProgress}
+            onViewHistory={handleViewHistory}
+          />
+        );
       case AppScreen.INSTRUCTION:
         return <InstructionScreen onStart={handleInstructionComplete} />;
       case AppScreen.ASSESSMENT:
-        return <AssessmentScreen onComplete={handleAssessmentComplete} />;
+        return (
+          <AssessmentScreen
+            onComplete={handleAssessmentComplete}
+            onBackToHome={handleBackToHome}
+          />
+        );
       case AppScreen.RESULT:
-        return <ResultScreen onRestart={handleRestart} />;
+        return <ResultScreen onRestart={handleResultToHome} />;
+      case AppScreen.HISTORY:
+        return (
+          <HistoryScreen
+            onBack={handleHistoryBack}
+            onViewResult={handleViewHistoryDetail}
+          />
+        );
+      case AppScreen.HISTORY_DETAIL:
+        return (
+          <ResultScreen
+            onRestart={handleHistoryDetailBack}
+            historyData={selectedHistory}
+          />
+        );
       default:
         return null;
     }
   };
 
   return (
+    <View style={styles.container}>
+      <StatusBar style="auto" />
+      {renderScreen()}
+    </View>
+  );
+}
+
+export default function App() {
+  return (
     <SafeAreaProvider>
       <SkillProvider>
         <BreakProvider>
-          <View style={styles.container}>
-            <StatusBar style="auto" />
-            {renderScreen()}
-          </View>
+          <AppContent />
         </BreakProvider>
       </SkillProvider>
     </SafeAreaProvider>

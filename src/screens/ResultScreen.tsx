@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View, StyleSheet, ScrollView, SafeAreaView, Share, Linking, Alert, Image, Clipboard } from "react-native";
 // import Clipboard from "expo-clipboard";
 import { captureRef } from "react-native-view-shot";
@@ -9,13 +9,42 @@ import RadarChart from "../components/RadarChart";
 import SkillList from "../components/SkillList";
 import theme from "../styles/theme";
 import { useSkillContext } from "../contexts/SkillContext";
+import { AssessmentHistory } from "../types";
 
 interface ResultScreenProps {
   onRestart: () => void;
+  historyData?: AssessmentHistory | null;
 }
 
-const ResultScreen: React.FC<ResultScreenProps> = ({ onRestart }) => {
-  const { summaries, resetAssessment, skills, userAnswers } = useSkillContext();
+const ResultScreen: React.FC<ResultScreenProps> = ({ onRestart, historyData }) => {
+  const {
+    summaries,
+    resetAssessment,
+    skills,
+    userAnswers,
+    saveAssessmentResult,
+    hasUnsavedResult
+  } = useSkillContext();
+
+  // 表示するデータを決定（履歴データがある場合はそちらを使用）
+  const displayData = historyData ? historyData.results : summaries;
+  const displayUserAnswers = historyData ? historyData.userAnswers : userAnswers;
+
+  // 評価完了時の自動保存
+  useEffect(() => {
+    // 履歴表示モードでない場合のみ、新しい評価結果を自動保存
+    if (!historyData && hasUnsavedResult && summaries.length > 0) {
+      const autoSave = async () => {
+        try {
+          await saveAssessmentResult();
+          console.log('評価結果が自動保存されました');
+        } catch (error) {
+          console.error('自動保存に失敗しました:', error);
+        }
+      };
+      autoSave();
+    }
+  }, [historyData, hasUnsavedResult, summaries.length, saveAssessmentResult]);
 
   // レーダーチャート画像付きでX共有
   const radarRef = React.useRef<View>(null);
@@ -82,7 +111,7 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ onRestart }) => {
     try {
       // skillsの順番でTRUE/FALSEを出力
       const answerMap: { [skillId: number]: boolean } = {};
-      userAnswers.forEach((a) => {
+      displayUserAnswers.forEach((a) => {
         answerMap[a.skillId] = a.hasSkill;
       });
 
@@ -103,9 +132,16 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ onRestart }) => {
     }
   };
 
+
+
+  // トップに戻る
+  const handleBackToHome = () => {
+    onRestart();
+  };
+
   // 再評価
-  const handleRestart = () => {
-    resetAssessment();
+  const handleRestart = async () => {
+    await resetAssessment();
     onRestart();
   };
 
@@ -126,28 +162,50 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ onRestart }) => {
         showsVerticalScrollIndicator={true}
         nestedScrollEnabled={true}
       >
-        {/* レーダーチャート */}
-        <View ref={radarRef} collapsable={false}>
-          <RadarChart data={summaries} />
-        </View>
+        {displayData && displayData.length > 0 ? (
+          <>
+            {/* レーダーチャート */}
+            <View ref={radarRef} collapsable={false}>
+              <RadarChart data={displayData} />
+            </View>
 
-        {/* スキル一覧 */}
-        <SkillList data={summaries} />
+            {/* スキル一覧 */}
+            <SkillList data={displayData} />
+          </>
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Typography variant="h6" align="center" style={styles.emptyText}>
+              表示するデータがありません
+            </Typography>
+          </View>
+        )}
       </ScrollView>
 
       <View style={styles.footer}>
-        <Button
-          title="結果をコピー"
-          onPress={handleCopySpreadsheet}
-          variant="outline"
-          style={styles.button}
-        />
-        <Button
-          title="再評価する"
-          onPress={handleRestart}
-          variant="primary"
-          style={styles.button}
-        />
+        <View style={styles.buttonRow}>
+          <Button
+            title="結果をコピー"
+            onPress={handleCopySpreadsheet}
+            variant="outline"
+            style={styles.button}
+          />
+          <Button
+            title={historyData ? "戻る" : "再評価する"}
+            onPress={handleRestart}
+            variant="secondary"
+            style={styles.button}
+          />
+        </View>
+
+        {/* トップに戻るボタンを画面下部に配置 */}
+        <View style={styles.homeButtonContainer}>
+          <Button
+            title="トップに戻る"
+            onPress={handleBackToHome}
+            variant="primary"
+            style={styles.homeButton}
+          />
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -177,16 +235,37 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.xl,
   },
   footer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
     marginTop: theme.spacing.lg,
     paddingVertical: theme.spacing.md,
     borderTopWidth: 1,
     borderTopColor: theme.colors.gray[200],
   },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: theme.spacing.sm,
+  },
   button: {
     flex: 1,
     marginHorizontal: theme.spacing.xs,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: theme.spacing.xl,
+  },
+  emptyText: {
+    color: theme.colors.gray[600],
+  },
+  homeButtonContainer: {
+    marginTop: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.gray[200],
+  },
+  homeButton: {
+    marginHorizontal: theme.spacing.lg,
   },
 });
 
