@@ -20,19 +20,21 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        {/* ロゴ画像（実際の画像がない場合はプレースホルダー） */}
-        <View style={styles.logoPlaceholder}>
-          <Typography variant="h2" color={theme.colors.common.white}>
-            SA
-          </Typography>
+        {/* アプリアイコン */}
+        <View style={styles.logoContainer}>
+          <Image
+            source={require("../../assets/icon.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
         </View>
 
         <Typography variant="h3" style={styles.title}>
-          スキル習得状況可視化アプリ
+          技術マップ
         </Typography>
 
         <Typography variant="body1" style={styles.subtitle}>
-          スキルを評価して、成長を可視化しましょう
+          あなたのスキルを評価・可視化
         </Typography>
 
         <ActivityIndicator
@@ -60,14 +62,25 @@ const styles = StyleSheet.create({
   content: {
     alignItems: "center",
   },
-  logoPlaceholder: {
+  logoContainer: {
     width: 120,
     height: 120,
-    borderRadius: 60,
-    backgroundColor: theme.colors.primary.main,
-    justifyContent: "center",
-    alignItems: "center",
     marginBottom: theme.spacing.xl,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8, // Android用
   },
   title: {
     marginBottom: theme.spacing.md,

@@ -94,7 +94,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
               🚀 新しい評価を開始
             </Typography>
             <Typography variant="body2" style={styles.cardDescription}>
-              133項目のスキル評価（約15-20分）
+                                128項目のスキル評価（約15-20分）
             </Typography>
             <Button
               title="評価を開始"
