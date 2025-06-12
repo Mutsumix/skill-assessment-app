@@ -44,8 +44,9 @@ export const BreakProvider: React.FC<BreakProviderProps> = ({ children }) => {
       emoji: "📐📝",
     },
     "マネジメント": {
-      title: "完了しました！",
-      message: "全ての分野の回答が完了しました。結果を確認しましょう。",
+      title: "あと少し！",
+      // message: "全ての分野の回答が完了しました。結果を確認しましょう。",
+      message: "もう少し回答することで結果を確認できます。",
       emoji: "🏆👑",
     },
   };
