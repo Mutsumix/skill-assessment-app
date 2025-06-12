@@ -25,6 +25,7 @@ interface SkillContextType {
   hasSavedProgress: boolean;
   progressComparisons: ProgressComparison[];
   hasUnsavedResult: boolean;
+  isSavingResult: boolean; // 保存処理中フラグを追加
   // メソッド
   answerSkill: (skillId: number, hasSkill: boolean) => void;
   nextSkill: () => void;
@@ -70,6 +71,7 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
   const [hasSavedProgress, setHasSavedProgress] = useState(false);
   const [progressComparisons, setProgressComparisons] = useState<ProgressComparison[]>([]);
   const [hasUnsavedResult, setHasUnsavedResult] = useState(false); // 未保存の結果があるか
+  const [isSavingResult, setIsSavingResult] = useState(false); // 保存処理中フラグ
 
   // CSVからスキルデータを読み込み、保存されたデータも復元
   useEffect(() => {
@@ -265,9 +267,23 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
     }
   };
 
-  // 評価結果の履歴保存機能
+  // 評価結果の履歴保存機能（重複保存防止）
   const saveAssessmentResult = async () => {
+    // 既に保存処理中の場合は何もしない
+    if (isSavingResult) {
+      console.log('保存処理が既に実行中のため、スキップします');
+      return;
+    }
+
+    // 保存するデータがない場合もスキップ
+    if (!hasUnsavedResult) {
+      console.log('保存する新しい結果がないため、スキップします');
+      return;
+    }
+
     try {
+      setIsSavingResult(true); // 保存開始
+
       if (summaries.length === 0) {
         calculateSummaries();
       }
@@ -311,7 +327,7 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
       const updatedHistory = await AssessmentHistoryManager.getAll();
       setAssessmentHistory(updatedHistory);
 
-            // 保存された進捗をクリア（評価完了のため）
+      // 保存された進捗をクリア（評価完了のため）
       await clearSavedProgress();
 
       // 保存完了フラグを更新
@@ -320,6 +336,8 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
       console.log('評価結果が保存されました');
     } catch (error) {
       console.error('評価結果保存に失敗しました:', error);
+    } finally {
+      setIsSavingResult(false); // 保存完了
     }
   };
 
@@ -409,6 +427,7 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
     hasSavedProgress,
     progressComparisons,
     hasUnsavedResult,
+    isSavingResult,
     answerSkill,
     nextSkill,
     prevSkill,

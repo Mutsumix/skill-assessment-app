@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { View, StyleSheet, SafeAreaView, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Typography from "../components/Typography";
@@ -41,6 +41,10 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
     setShowBreak,
     nextBreak,
   } = useBreakContext();
+
+  // 保存関連の状態管理
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
 
   // 現在のスキル
   const currentSkill = skills[currentSkillIndex];
@@ -101,7 +105,24 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
     nextBreak();
   };
 
+  // 手動保存のハンドラー
+  const handleSaveProgress = async () => {
+    if (userAnswers.length === 0) {
+      Alert.alert("保存データなし", "まだ回答がありません。");
+      return;
+    }
 
+    setIsSaving(true);
+    try {
+      await saveProgress();
+      setSaveMessage("保存完了!");
+      setTimeout(() => setSaveMessage(''), 2000); // 2秒後にメッセージを消す
+    } catch (error) {
+      Alert.alert("エラー", "保存に失敗しました。");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // トップに戻る
   const handleBackToHome = () => {
@@ -168,6 +189,14 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
           </Typography>
           <View style={styles.headerButtons}>
             <Button
+              title={isSaving ? "保存中..." : "保存"}
+              onPress={handleSaveProgress}
+              variant="secondary"
+              style={styles.saveButton}
+              size="small"
+              disabled={isSaving || userAnswers.length === 0}
+            />
+            <Button
               title="トップ"
               onPress={handleBackToHome}
               variant="outline"
@@ -176,6 +205,14 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
             />
           </View>
         </View>
+        {/* 保存メッセージ */}
+        {saveMessage && (
+          <View style={styles.saveMessageContainer}>
+            <Typography variant="caption" style={styles.saveMessage}>
+              {saveMessage}
+            </Typography>
+          </View>
+        )}
         <ProgressBar progress={progress} showLabel />
 
         {/* 分野ごとの設問バランス可視化 */}
@@ -241,12 +278,13 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
           />
         ) : (
           <Card variant="elevated" style={styles.card}>
-            <Typography variant="h4" style={styles.skillTitle}>
-              {currentSkill.スキル || "スキル名が取得できません"}
-            </Typography>
 
             <Typography variant="body2" color={theme.colors.gray[600]} style={styles.skillSubtitle}>
               {`${currentSkill.分野 || "不明"} > ${currentSkill.項目 || "不明"} > ${currentSkill.レベル || "不明"}`}
+            </Typography>
+
+            <Typography variant="h4" style={styles.skillTitle}>
+              {currentSkill.スキル || "スキル名が取得できません"}
             </Typography>
 
             <View style={styles.divider} />
@@ -323,8 +361,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: theme.spacing.xs,
   },
+  saveButton: {
+    paddingHorizontal: theme.spacing.sm,
+  },
   homeButton: {
     paddingHorizontal: theme.spacing.sm,
+  },
+  saveMessageContainer: {
+    alignItems: "center",
+    marginTop: theme.spacing.xs,
+  },
+  saveMessage: {
+    color: theme.colors.accent.success,
+    fontWeight: "600",
   },
   title: {
     marginBottom: 0,

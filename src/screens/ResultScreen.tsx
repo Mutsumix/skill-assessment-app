@@ -23,17 +23,18 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ onRestart, historyData }) =
     skills,
     userAnswers,
     saveAssessmentResult,
-    hasUnsavedResult
+    hasUnsavedResult,
+    isSavingResult
   } = useSkillContext();
 
   // 表示するデータを決定（履歴データがある場合はそちらを使用）
   const displayData = historyData ? historyData.results : summaries;
   const displayUserAnswers = historyData ? historyData.userAnswers : userAnswers;
 
-  // 評価完了時の自動保存
+  // 評価完了時の自動保存（重複保存防止強化）
   useEffect(() => {
     // 履歴表示モードでない場合のみ、新しい評価結果を自動保存
-    if (!historyData && hasUnsavedResult && summaries.length > 0) {
+    if (!historyData && hasUnsavedResult && !isSavingResult && summaries.length > 0) {
       const autoSave = async () => {
         try {
           await saveAssessmentResult();
@@ -44,7 +45,7 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ onRestart, historyData }) =
       };
       autoSave();
     }
-  }, [historyData, hasUnsavedResult, summaries.length, saveAssessmentResult]);
+  }, [historyData, hasUnsavedResult, isSavingResult, summaries.length, saveAssessmentResult]);
 
   // レーダーチャート画像付きでX共有
   const radarRef = React.useRef<View>(null);
