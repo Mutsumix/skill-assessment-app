@@ -9,6 +9,7 @@ interface BreakContextType {
   setShowBreak: (show: boolean) => void;
   nextBreak: () => void;
   resetBreaks: () => void;
+  showBreakForField: (fieldName: string) => void; // 特定分野の休憩カードを表示
 }
 
 const BreakContext = createContext<BreakContextType | undefined>(undefined);
@@ -88,6 +89,15 @@ export const BreakProvider: React.FC<BreakProviderProps> = ({ children }) => {
     setShowBreak(false);
   };
 
+  // 特定分野の休憩カードを表示
+  const showBreakForField = (fieldName: string) => {
+    const fieldIndex = fieldOrder.indexOf(fieldName);
+    if (fieldIndex !== -1) {
+      setCurrentBreakIndex(fieldIndex);
+      setShowBreak(true);
+    }
+  };
+
   const value = {
     breakCards,
     currentBreakIndex,
@@ -95,6 +105,7 @@ export const BreakProvider: React.FC<BreakProviderProps> = ({ children }) => {
     setShowBreak,
     nextBreak,
     resetBreaks,
+    showBreakForField,
   };
 
   return <BreakContext.Provider value={value}>{children}</BreakContext.Provider>;

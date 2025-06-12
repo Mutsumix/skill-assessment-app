@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { View, StyleSheet, SafeAreaView, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Typography from "../components/Typography";
-import ProgressBar from "../components/ProgressBar";
 import Button from "../components/Button";
 import Card from "../components/Card";
 import BreakCard from "../components/BreakCard";
@@ -40,6 +39,7 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
     showBreak,
     setShowBreak,
     nextBreak,
+    showBreakForField,
   } = useBreakContext();
 
   // 保存関連の状態管理
@@ -61,17 +61,17 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
 
   // 分野の変更を検出して休憩カードを表示
   useEffect(() => {
-    if (currentSkillIndex > 0 && currentSkillIndex < skills.length) {
+    if (currentSkillIndex > 0 && currentSkillIndex < skills.length && !showBreak) {
       const prevSkill = skills[currentSkillIndex - 1];
       const currentSkill = skills[currentSkillIndex];
 
-      // 分野が変わったら休憩カードを表示
+      // 分野が変わったら休憩カードを表示（終了した分野の休憩カードを表示）
       if (prevSkill.分野 !== currentSkill.分野) {
         console.log(`分野が変わりました: ${prevSkill.分野} -> ${currentSkill.分野}`);
-        setShowBreak(true);
+        showBreakForField(prevSkill.分野); // 終了した分野の休憩カードを表示
       }
     }
-  }, [currentSkillIndex, skills, setShowBreak]);
+  }, [currentSkillIndex, skills]);
 
   // 全てのスキルが評価されたら完了
   useEffect(() => {
@@ -102,7 +102,6 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
   // 休憩から続ける
   const handleContinue = () => {
     setShowBreak(false);
-    nextBreak();
   };
 
   // 手動保存のハンドラー
@@ -213,7 +212,16 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
             </Typography>
           </View>
         )}
-        <ProgressBar progress={progress} showLabel />
+
+        {/* 進捗パーセンテージ表示 */}
+        <View style={styles.progressInfo}>
+          <Typography variant="h6" style={styles.progressText}>
+            {Math.round(progress)}%
+          </Typography>
+          <Typography variant="caption" style={styles.progressSubtext}>
+            進捗
+          </Typography>
+        </View>
 
         {/* 分野ごとの設問バランス可視化 */}
         <View style={styles.categoryBarContainer}>
@@ -227,38 +235,64 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
             const fieldOrder = [
               "インフラエンジニア",
               "開発エンジニア（プログラマー）",
-              "開発エンジニア（システムエンジニア）",
+              "開発エンジニア（SE）",
               "マネジメント",
             ];
+            // 現在の進捗位置を計算
+            let cumulativeCount = 0;
+            const fieldProgress = fieldOrder.map((field) => {
+              const count = fieldCounts[field] || 0;
+              const start = cumulativeCount;
+              const end = cumulativeCount + count;
+              cumulativeCount += count;
+              return { field, count, start, end };
+            });
+
             return (
               <View style={{ flexDirection: "row", alignItems: "center", width: "100%", marginTop: 8 }}>
-                {fieldOrder.map((field, idx) => {
-                  const count = fieldCounts[field] || 0;
-                  const widthPercent = total > 0 ? (count / total) * 100 : 0;
+                {fieldProgress.map(({ field, count, start, end }, idx) => {
+                  // 現在の位置がこの分野内にあるかチェック
+                  const isCurrentField = currentSkillIndex >= start && currentSkillIndex < end;
+                  const fieldProgressRatio = isCurrentField
+                    ? (currentSkillIndex - start) / count
+                    : currentSkillIndex >= end ? 1 : 0;
+
                   return (
                     <View key={field} style={{ flex: count, alignItems: "center" }}>
                       <View
                         style={{
                           height: 8,
                           width: "100%",
-                          backgroundColor: theme.colors.primary.light,
-                          opacity: 0.5,
+                          backgroundColor: theme.colors.gray[300],
                           borderRadius: 4,
                           marginHorizontal: 2,
+                          overflow: "hidden",
                         }}
-                      />
+                      >
+                        <View
+                          style={{
+                            height: "100%",
+                            width: `${fieldProgressRatio * 100}%`,
+                            backgroundColor: theme.colors.primary.main,
+                            borderRadius: 4,
+                          }}
+                        />
+                      </View>
                       <Typography
                         variant="caption"
                         style={{
                           fontSize: 11,
-                          color: theme.colors.gray[600],
+                          color: isCurrentField ? theme.colors.primary.main : theme.colors.gray[600],
                           marginTop: 2,
                           textAlign: "center",
+                          fontWeight: isCurrentField ? "600" : "normal",
                         }}
                         numberOfLines={1}
                       >
                         {field === "マネジメント"
                           ? "MGR"
+                          : field === "開発エンジニア（SE）"
+                          ? "システムエンジニア"
                           : field.replace("開発エンジニア（", "").replace("）", "")}
                       </Typography>
                     </View>
@@ -374,6 +408,18 @@ const styles = StyleSheet.create({
   saveMessage: {
     color: theme.colors.accent.success,
     fontWeight: "600",
+  },
+  progressInfo: {
+    alignItems: "center",
+    marginBottom: theme.spacing.sm,
+  },
+  progressText: {
+    color: theme.colors.primary.main,
+    fontWeight: "600",
+  },
+  progressSubtext: {
+    color: theme.colors.gray[500],
+    marginTop: theme.spacing.xs,
   },
   title: {
     marginBottom: 0,
