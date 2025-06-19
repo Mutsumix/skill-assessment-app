@@ -12,6 +12,7 @@ const STORAGE_KEYS = {
   USER_PROFILE: "@user_profile",
   SAVED_PROGRESS: "@saved_progress",
   ASSESSMENT_HISTORY: "@assessment_history",
+  FIRST_LAUNCH: "@first_launch",
 } as const;
 
 // ユーザープロフィールの管理
@@ -183,6 +184,37 @@ export const ProgressManager = {
   },
 };
 
+// 初回起動管理
+export const FirstLaunchManager = {
+  async isFirstLaunch(): Promise<boolean> {
+    try {
+      const data = await AsyncStorage.getItem(STORAGE_KEYS.FIRST_LAUNCH);
+      return data === null; // データがなければ初回起動
+    } catch (error) {
+      console.error("初回起動フラグの確認に失敗しました:", error);
+      return true; // エラーの場合は安全のため初回として扱う
+    }
+  },
+
+  async markLaunchComplete(): Promise<void> {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.FIRST_LAUNCH, "completed");
+    } catch (error) {
+      console.error("初回起動フラグの設定に失敗しました:", error);
+      throw error;
+    }
+  },
+
+  async reset(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEYS.FIRST_LAUNCH);
+    } catch (error) {
+      console.error("初回起動フラグのリセットに失敗しました:", error);
+      throw error;
+    }
+  },
+};
+
 // ユーティリティ関数
 export const StorageUtils = {
   // 評価履歴から統計情報を計算
@@ -221,7 +253,11 @@ export const StorageUtils = {
   // 全てのストレージをクリア（デバッグ用）
   async clearAllStorage(): Promise<void> {
     try {
-      await Promise.all([UserProfileManager.clear(), ProgressManager.clear()]);
+      await Promise.all([
+        UserProfileManager.clear(),
+        ProgressManager.clear(),
+        FirstLaunchManager.reset(),
+      ]);
     } catch (error) {
       console.error("全ストレージのクリアに失敗しました:", error);
       throw error;

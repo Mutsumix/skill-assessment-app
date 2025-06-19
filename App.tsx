@@ -12,6 +12,7 @@ import ResultScreen from "./src/screens/ResultScreen";
 import HistoryScreen from "./src/screens/HistoryScreen";
 import theme from "./src/styles/theme";
 import { AssessmentHistory } from "./src/types";
+import { FirstLaunchManager } from "./src/utils/storageManager";
 
 // アプリの画面
 enum AppScreen {
@@ -49,8 +50,15 @@ function AppContent() {
   }, []);
 
   // スプラッシュ画面の完了時
-  const handleSplashComplete = () => {
-    setCurrentScreen(AppScreen.HOME);
+  const handleSplashComplete = async () => {
+    // 初回起動かどうかをチェック
+    const isFirstLaunch = await FirstLaunchManager.isFirstLaunch();
+
+    if (isFirstLaunch) {
+      setCurrentScreen(AppScreen.INSTRUCTION);
+    } else {
+      setCurrentScreen(AppScreen.HOME);
+    }
   };
 
   // ホーム画面から新規評価開始
@@ -70,7 +78,9 @@ function AppContent() {
   };
 
   // 説明画面の完了時
-  const handleInstructionComplete = () => {
+  const handleInstructionComplete = async () => {
+    // 初回起動完了をマーク
+    await FirstLaunchManager.markLaunchComplete();
     setCurrentScreen(AppScreen.ASSESSMENT);
   };
 
