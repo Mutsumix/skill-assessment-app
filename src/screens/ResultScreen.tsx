@@ -7,6 +7,7 @@ import Typography from "../components/Typography";
 import Button from "../components/Button";
 import RadarChart from "../components/RadarChart";
 import SkillList from "../components/SkillList";
+import FieldResultChart from "../components/FieldResultChart";
 import theme from "../styles/theme";
 import { useSkillContext } from "../contexts/SkillContext";
 import { AssessmentHistory } from "../types";
@@ -24,7 +25,9 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ onRestart, historyData }) =
     userAnswers,
     saveAssessmentResult,
     hasUnsavedResult,
-    isSavingResult
+    isSavingResult,
+    assessmentConfig,
+    fieldSummaries
   } = useSkillContext();
 
   // 表示するデータを決定（履歴データがある場合はそちらを使用）
@@ -33,8 +36,12 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ onRestart, historyData }) =
 
   // 評価完了時の自動保存（重複保存防止強化）
   useEffect(() => {
-    // 履歴表示モードでない場合のみ、新しい評価結果を自動保存
-    if (!historyData && hasUnsavedResult && !isSavingResult && summaries.length > 0) {
+    // 履歴表示モードでない場合かつ分野別評価でない場合のみ、新しい評価結果を自動保存
+    if (!historyData && 
+        hasUnsavedResult && 
+        !isSavingResult && 
+        summaries.length > 0 && 
+        assessmentConfig.type === 'full') {
       const autoSave = async () => {
         try {
           await saveAssessmentResult();
@@ -45,7 +52,7 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ onRestart, historyData }) =
       };
       autoSave();
     }
-  }, [historyData, hasUnsavedResult, isSavingResult, summaries.length, saveAssessmentResult]);
+  }, [historyData, hasUnsavedResult, isSavingResult, summaries.length, assessmentConfig.type, saveAssessmentResult]);
 
   // レーダーチャート画像付きでX共有
   const radarRef = React.useRef<View>(null);
@@ -163,22 +170,49 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ onRestart, historyData }) =
         showsVerticalScrollIndicator={true}
         nestedScrollEnabled={true}
       >
-        {displayData && displayData.length > 0 ? (
+        {/* 分野別評価の場合 */}
+        {!historyData && assessmentConfig.type === 'field-specific' ? (
           <>
-            {/* レーダーチャート */}
-            <View ref={radarRef} collapsable={false}>
-              <RadarChart data={displayData} />
+            {/* 分野別評価の警告メッセージ */}
+            <View style={styles.fieldSpecificWarning}>
+              <Typography variant="h6" style={styles.warningTitle}>
+                ⚠️ 分野別評価結果
+              </Typography>
+              <Typography variant="body2" style={styles.warningText}>
+                この結果は履歴に保存されません
+              </Typography>
             </View>
 
-            {/* スキル一覧 */}
-            <SkillList data={displayData} />
+            {/* 分野別結果チャート */}
+            {fieldSummaries && fieldSummaries.length > 0 ? (
+              <FieldResultChart fieldSummaries={fieldSummaries} />
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Typography variant="h6" align="center" style={styles.emptyText}>
+                  分野別の結果がありません
+                </Typography>
+              </View>
+            )}
           </>
         ) : (
-          <View style={styles.emptyContainer}>
-            <Typography variant="h6" align="center" style={styles.emptyText}>
-              表示するデータがありません
-            </Typography>
-          </View>
+          /* 通常の全体評価の場合 */
+          displayData && displayData.length > 0 ? (
+            <>
+              {/* レーダーチャート */}
+              <View ref={radarRef} collapsable={false}>
+                <RadarChart data={displayData} />
+              </View>
+
+              {/* スキル一覧 */}
+              <SkillList data={displayData} />
+            </>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Typography variant="h6" align="center" style={styles.emptyText}>
+                表示するデータがありません
+              </Typography>
+            </View>
+          )
         )}
       </ScrollView>
 
@@ -267,6 +301,26 @@ const styles = StyleSheet.create({
   },
   homeButton: {
     marginHorizontal: theme.spacing.lg,
+  },
+  fieldSpecificWarning: {
+    backgroundColor: theme.colors.accent.warning + '20',
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.accent.warning + '40',
+    marginBottom: theme.spacing.lg,
+    alignItems: "center",
+  },
+  warningTitle: {
+    color: theme.colors.accent.warning,
+    fontWeight: "600",
+    marginBottom: theme.spacing.xs,
+    textAlign: "center",
+  },
+  warningText: {
+    color: theme.colors.accent.warning,
+    textAlign: "center",
+    fontWeight: "500",
   },
 });
 

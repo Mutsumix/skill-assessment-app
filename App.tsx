@@ -6,18 +6,22 @@ import { BreakProvider } from "./src/contexts/BreakContext";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import SplashScreen from "./src/screens/SplashScreen";
 import HomeScreen from "./src/screens/HomeScreen";
+import SelectionScreen from "./src/screens/SelectionScreen";
+import FieldSelectionScreen from "./src/screens/FieldSelectionScreen";
 import InstructionScreen from "./src/screens/InstructionScreen";
 import AssessmentScreen from "./src/screens/AssessmentScreen";
 import ResultScreen from "./src/screens/ResultScreen";
 import HistoryScreen from "./src/screens/HistoryScreen";
 import theme from "./src/styles/theme";
-import { AssessmentHistory } from "./src/types";
+import { AssessmentHistory, FieldType } from "./src/types";
 import { FirstLaunchManager } from "./src/utils/storageManager";
 
 // アプリの画面
 enum AppScreen {
   SPLASH,
   HOME,
+  SELECTION,
+  FIELD_SELECTION,
   INSTRUCTION,
   ASSESSMENT,
   RESULT,
@@ -30,7 +34,8 @@ function AppContent() {
   const [currentScreen, setCurrentScreen] = useState<AppScreen>(AppScreen.SPLASH);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedHistory, setSelectedHistory] = useState<AssessmentHistory | null>(null);
-  const { resetAssessment } = useSkillContext();
+  const [selectedFields, setSelectedFields] = useState<FieldType[]>([]);
+  const { resetAssessment, setAssessmentConfig } = useSkillContext();
 
   // アプリの初期化
   useEffect(() => {
@@ -64,7 +69,7 @@ function AppContent() {
   // ホーム画面から新規評価開始
   const handleStartNew = async () => {
     await resetAssessment(); // 既存のデータをクリア
-    setCurrentScreen(AppScreen.INSTRUCTION);
+    setCurrentScreen(AppScreen.SELECTION);
   };
 
   // ホーム画面から進捗再開
@@ -75,6 +80,34 @@ function AppContent() {
   // ホーム画面から履歴表示
   const handleViewHistory = () => {
     setCurrentScreen(AppScreen.HISTORY);
+  };
+
+  // 選択画面から全スキルチェック選択
+  const handleSelectFullAssessment = async () => {
+    await setAssessmentConfig({ type: 'full' });
+    setCurrentScreen(AppScreen.INSTRUCTION);
+  };
+
+  // 選択画面から分野別チェック選択
+  const handleSelectFieldSpecific = () => {
+    setCurrentScreen(AppScreen.FIELD_SELECTION);
+  };
+
+  // 選択画面から戻る
+  const handleSelectionBack = () => {
+    setCurrentScreen(AppScreen.HOME);
+  };
+
+  // 分野選択画面から評価開始
+  const handleStartFieldAssessment = async (fields: FieldType[]) => {
+    setSelectedFields(fields);
+    await setAssessmentConfig({ type: 'field-specific', selectedFields: fields });
+    setCurrentScreen(AppScreen.INSTRUCTION);
+  };
+
+  // 分野選択画面から戻る
+  const handleFieldSelectionBack = () => {
+    setCurrentScreen(AppScreen.SELECTION);
   };
 
   // 説明画面の完了時
@@ -136,6 +169,21 @@ function AppContent() {
             onStartNew={handleStartNew}
             onResumeProgress={handleResumeProgress}
             onViewHistory={handleViewHistory}
+          />
+        );
+      case AppScreen.SELECTION:
+        return (
+          <SelectionScreen
+            onSelectFullAssessment={handleSelectFullAssessment}
+            onSelectFieldSpecific={handleSelectFieldSpecific}
+            onBack={handleSelectionBack}
+          />
+        );
+      case AppScreen.FIELD_SELECTION:
+        return (
+          <FieldSelectionScreen
+            onStartFieldAssessment={handleStartFieldAssessment}
+            onBack={handleFieldSelectionBack}
           />
         );
       case AppScreen.INSTRUCTION:

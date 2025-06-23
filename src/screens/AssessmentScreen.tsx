@@ -17,17 +17,20 @@ interface AssessmentScreenProps {
 const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackToHome }) => {
   const {
     skills,
+    filteredSkills,
     currentSkillIndex,
     progress,
     answerSkill,
     nextSkill,
     prevSkill,
     calculateSummaries,
+    calculateFieldSummaries,
     saveProgress,
     hasSavedProgress,
     userAnswers,
     hasUnsavedResult,
     saveAssessmentResult,
+    assessmentConfig,
   } = useSkillContext();
 
   // SafeAreaのinsets取得
@@ -46,8 +49,11 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
 
+  // 使用するスキルリストを決定
+  const currentSkills = filteredSkills.length > 0 ? filteredSkills : skills;
+  
   // 現在のスキル
-  const currentSkill = skills[currentSkillIndex];
+  const currentSkill = currentSkills[currentSkillIndex];
 
   // スキルデータをログに出力
   useEffect(() => {
@@ -61,25 +67,29 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
 
   // 分野の変更を検出して休憩カードを表示
   useEffect(() => {
-    if (currentSkillIndex > 0 && currentSkillIndex < skills.length && !showBreak) {
-      const prevSkill = skills[currentSkillIndex - 1];
-      const currentSkill = skills[currentSkillIndex];
+    if (currentSkillIndex > 0 && currentSkillIndex < currentSkills.length && !showBreak) {
+      const prevSkill = currentSkills[currentSkillIndex - 1];
+      const currentSkillData = currentSkills[currentSkillIndex];
 
       // 分野が変わったら休憩カードを表示（終了した分野の休憩カードを表示）
-      if (prevSkill.分野 !== currentSkill.分野) {
-        console.log(`分野が変わりました: ${prevSkill.分野} -> ${currentSkill.分野}`);
+      if (prevSkill.分野 !== currentSkillData.分野) {
+        console.log(`分野が変わりました: ${prevSkill.分野} -> ${currentSkillData.分野}`);
         showBreakForField(prevSkill.分野); // 終了した分野の休憩カードを表示
       }
     }
-  }, [currentSkillIndex, skills]);
+  }, [currentSkillIndex, currentSkills]);
 
   // 全てのスキルが評価されたら完了
   useEffect(() => {
-    if (currentSkillIndex >= skills.length) {
-      calculateSummaries();
+    if (currentSkillIndex >= currentSkills.length) {
+      if (assessmentConfig.type === 'field-specific') {
+        calculateFieldSummaries();
+      } else {
+        calculateSummaries();
+      }
       onComplete();
     }
-  }, [currentSkillIndex, skills.length, calculateSummaries, onComplete]);
+  }, [currentSkillIndex, currentSkills.length, calculateSummaries, calculateFieldSummaries, assessmentConfig.type, onComplete]);
 
   // スキルありの回答
   const handleYes = () => {
@@ -125,8 +135,30 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
 
   // トップに戻る
   const handleBackToHome = () => {
+    // 分野別評価の場合は履歴に保存しない
+    if (assessmentConfig.type === 'field-specific') {
+      if (userAnswers.length > 0) {
+        Alert.alert(
+          "評価を終了しますか？",
+          "分野別評価の結果は履歴に保存されません。トップに戻りますか？",
+          [
+            { text: "キャンセル", style: "cancel" },
+            {
+              text: "戻る",
+              style: "destructive",
+              onPress: onBackToHome
+            }
+          ]
+        );
+      } else {
+        onBackToHome();
+      }
+      return;
+    }
+
+    // 通常の全スキルチェックの場合
     // 評価完了後の結果画面から戻る場合は、結果を自動保存してからトップに戻る
-    if (currentSkillIndex >= skills.length && hasUnsavedResult) {
+    if (currentSkillIndex >= currentSkills.length && hasUnsavedResult) {
       Alert.alert(
         "結果を保存しますか？",
         "評価が完了しました。結果を履歴に保存してトップに戻りますか？",
@@ -148,7 +180,7 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
       );
     }
     // 評価途中で進捗がある場合の確認
-    else if (userAnswers.length > 0 && currentSkillIndex < skills.length) {
+    else if (userAnswers.length > 0 && currentSkillIndex < currentSkills.length) {
       Alert.alert(
         "途中の記録を保存しますか？",
         "評価の途中です。進捗を保存してトップに戻りますか？",
@@ -228,10 +260,10 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
           {(() => {
             // 分野ごとの設問数を集計
             const fieldCounts: { [field: string]: number } = {};
-            skills.forEach((s) => {
+            currentSkills.forEach((s) => {
               fieldCounts[s.分野] = (fieldCounts[s.分野] || 0) + 1;
             });
-            const total = skills.length;
+            const total = currentSkills.length;
             const fieldOrder = [
               "インフラエンジニア",
               "開発エンジニア（プログラマー）",
@@ -369,8 +401,13 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
 
       <View style={styles.footer}>
         <Typography variant="caption" color={theme.colors.gray[500]}>
-          {`${currentSkillIndex + 1} / ${skills.length}`}
+          {`${currentSkillIndex + 1} / ${currentSkills.length}`}
         </Typography>
+        {assessmentConfig.type === 'field-specific' && (
+          <Typography variant="caption" color={theme.colors.accent.warning} style={styles.fieldSpecificNote}>
+            ⚠️ 分野別評価の結果は履歴に保存されません
+          </Typography>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -486,6 +523,11 @@ const styles = StyleSheet.create({
   footer: {
     marginTop: theme.spacing.lg,
     alignItems: "center",
+  },
+  fieldSpecificNote: {
+    marginTop: theme.spacing.xs,
+    textAlign: "center",
+    fontWeight: "600",
   },
 });
 

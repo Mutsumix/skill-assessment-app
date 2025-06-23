@@ -6,7 +6,10 @@ import {
   SkillCategory,
   AssessmentHistory,
   SavedProgress,
-  ProgressComparison
+  ProgressComparison,
+  AssessmentConfig,
+  FieldType,
+  FieldSummary
 } from "../types";
 import { loadSkillsFromCSV, extractCategories, groupSkillsByCategoryAndItem } from "../utils/csvParser";
 import { AssessmentHistoryManager, ProgressManager } from "../utils/storageManager";
@@ -26,6 +29,10 @@ interface SkillContextType {
   progressComparisons: ProgressComparison[];
   hasUnsavedResult: boolean;
   isSavingResult: boolean; // 保存処理中フラグを追加
+  // 分野別評価機能
+  assessmentConfig: AssessmentConfig;
+  filteredSkills: Skill[];
+  fieldSummaries: FieldSummary[];
   // メソッド
   answerSkill: (skillId: number, hasSkill: boolean) => void;
   nextSkill: () => void;
@@ -41,6 +48,9 @@ interface SkillContextType {
   compareWithPreviousAssessment: () => ProgressComparison[];
   deleteAssessmentHistory: (historyId: string) => Promise<void>;
   clearAllHistory: () => Promise<void>;
+  // 分野別評価メソッド
+  setAssessmentConfig: (config: AssessmentConfig) => Promise<void>;
+  calculateFieldSummaries: () => void;
 }
 
 const SkillContext = createContext<SkillContextType | undefined>(undefined);
@@ -72,6 +82,10 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
   const [progressComparisons, setProgressComparisons] = useState<ProgressComparison[]>([]);
   const [hasUnsavedResult, setHasUnsavedResult] = useState(false); // 未保存の結果があるか
   const [isSavingResult, setIsSavingResult] = useState(false); // 保存処理中フラグ
+  // 分野別評価の状態
+  const [assessmentConfig, setAssessmentConfigState] = useState<AssessmentConfig>({ type: 'full' });
+  const [filteredSkills, setFilteredSkills] = useState<Skill[]>([]);
+  const [fieldSummaries, setFieldSummaries] = useState<FieldSummary[]>([]);
 
   // CSVからスキルデータを読み込み、保存されたデータも復元
   useEffect(() => {
@@ -109,6 +123,20 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
     initializeApp();
   }, []);
 
+  // スキルデータまたは評価設定が変更されたときにフィルタリングされたスキルを更新
+  useEffect(() => {
+    if (skills.length > 0) {
+      if (assessmentConfig.type === 'field-specific' && assessmentConfig.selectedFields) {
+        const filtered = skills.filter(skill => 
+          assessmentConfig.selectedFields!.includes(skill.分野 as FieldType)
+        );
+        setFilteredSkills(filtered);
+      } else {
+        setFilteredSkills(skills);
+      }
+    }
+  }, [skills, assessmentConfig]);
+
   // 自動保存は無効化し、手動保存のみとする
   // useEffect(() => {
   //   if (userAnswers.length > 0 && skills.length > 0) {
@@ -137,23 +165,24 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
 
   // 次のスキルに進む
   const nextSkill = () => {
-    console.log(`現在のスキルインデックス: ${currentSkillIndex}, スキル総数: ${skills.length}`);
+    const currentSkills = filteredSkills.length > 0 ? filteredSkills : skills;
+    console.log(`現在のスキルインデックス: ${currentSkillIndex}, スキル総数: ${currentSkills.length}`);
 
-    if (currentSkillIndex < skills.length - 1) {
+    if (currentSkillIndex < currentSkills.length - 1) {
       const nextIndex = currentSkillIndex + 1;
       console.log(`次のスキルインデックス: ${nextIndex}`);
 
       // 次のスキルの情報をログに出力
-      if (skills[nextIndex]) {
-        console.log(`次のスキル: ${skills[nextIndex].スキル}, ID: ${skills[nextIndex].id}`);
+      if (currentSkills[nextIndex]) {
+        console.log(`次のスキル: ${currentSkills[nextIndex].スキル}, ID: ${currentSkills[nextIndex].id}`);
       }
 
       setCurrentSkillIndex(nextIndex);
       // 進捗状況を更新（次のスキルに進んだ後に計算）
-      const newProgress = Math.round(((nextIndex + 1) / skills.length) * 100);
+      const newProgress = Math.round(((nextIndex + 1) / currentSkills.length) * 100);
       console.log(`新しい進捗率: ${newProgress}%`);
       setProgress(newProgress);
-    } else if (currentSkillIndex === skills.length - 1) {
+    } else if (currentSkillIndex === currentSkills.length - 1) {
       // 最後のスキルの場合は100%にする
       console.log("最後のスキルに到達しました");
       setProgress(100);
@@ -414,6 +443,63 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
     }
   };
 
+  // 評価設定を設定
+  const setAssessmentConfig = async (config: AssessmentConfig) => {
+    setAssessmentConfigState(config);
+    
+    // 評価設定変更時にリセット
+    setCurrentSkillIndex(0);
+    setProgress(0);
+    setUserAnswers([]);
+    setSummaries([]);
+    setFieldSummaries([]);
+    setHasUnsavedResult(false);
+    
+    console.log('評価設定が変更されました:', config);
+  };
+
+  // 分野別集計結果を計算
+  const calculateFieldSummaries = () => {
+    if (assessmentConfig.type !== 'field-specific' || !assessmentConfig.selectedFields) {
+      setFieldSummaries([]);
+      return;
+    }
+
+    const results: FieldSummary[] = [];
+    
+    assessmentConfig.selectedFields.forEach(field => {
+      const fieldSkills = skills.filter(skill => skill.分野 === field);
+      
+      const beginnerSkills = fieldSkills.filter(s => s.レベル === "初級");
+      const intermediateSkills = fieldSkills.filter(s => s.レベル === "中級");
+      const advancedSkills = fieldSkills.filter(s => s.レベル === "上級");
+
+      const beginnerCount = beginnerSkills.filter(s =>
+        userAnswers.some(a => a.skillId === s.id && a.hasSkill)
+      ).length;
+
+      const intermediateCount = intermediateSkills.filter(s =>
+        userAnswers.some(a => a.skillId === s.id && a.hasSkill)
+      ).length;
+
+      const advancedCount = advancedSkills.filter(s =>
+        userAnswers.some(a => a.skillId === s.id && a.hasSkill)
+      ).length;
+
+      results.push({
+        field,
+        beginnerCount,
+        beginnerTotal: beginnerSkills.length,
+        intermediateCount,
+        intermediateTotal: intermediateSkills.length,
+        advancedCount,
+        advancedTotal: advancedSkills.length,
+      });
+    });
+
+    setFieldSummaries(results);
+  };
+
   const value = {
     skills,
     categories,
@@ -428,6 +514,9 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
     progressComparisons,
     hasUnsavedResult,
     isSavingResult,
+    assessmentConfig,
+    filteredSkills,
+    fieldSummaries,
     answerSkill,
     nextSkill,
     prevSkill,
@@ -441,6 +530,8 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
     compareWithPreviousAssessment,
     deleteAssessmentHistory,
     clearAllHistory,
+    setAssessmentConfig,
+    calculateFieldSummaries,
   };
 
   return <SkillContext.Provider value={value}>{children}</SkillContext.Provider>;
