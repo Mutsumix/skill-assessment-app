@@ -6,22 +6,22 @@ import { BreakProvider } from "./src/contexts/BreakContext";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import SplashScreen from "./src/screens/SplashScreen";
 import HomeScreen from "./src/screens/HomeScreen";
-import SelectionScreen from "./src/screens/SelectionScreen";
-import FieldSelectionScreen from "./src/screens/FieldSelectionScreen";
 import InstructionScreen from "./src/screens/InstructionScreen";
 import AssessmentScreen from "./src/screens/AssessmentScreen";
 import ResultScreen from "./src/screens/ResultScreen";
 import HistoryScreen from "./src/screens/HistoryScreen";
+import AssessmentModeSelectionScreen from "./src/screens/AssessmentModeSelectionScreen";
+import DomainSelectionScreen from "./src/screens/DomainSelectionScreen";
 import theme from "./src/styles/theme";
-import { AssessmentHistory, FieldType } from "./src/types";
+import { AssessmentHistory } from "./src/types";
 import { FirstLaunchManager } from "./src/utils/storageManager";
 
 // アプリの画面
 enum AppScreen {
   SPLASH,
   HOME,
-  SELECTION,
-  FIELD_SELECTION,
+  MODE_SELECTION,
+  DOMAIN_SELECTION,
   INSTRUCTION,
   ASSESSMENT,
   RESULT,
@@ -34,8 +34,7 @@ function AppContent() {
   const [currentScreen, setCurrentScreen] = useState<AppScreen>(AppScreen.SPLASH);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedHistory, setSelectedHistory] = useState<AssessmentHistory | null>(null);
-  const [selectedFields, setSelectedFields] = useState<FieldType[]>([]);
-  const { resetAssessment, setAssessmentConfig } = useSkillContext();
+  const { resetAssessment, startFullAssessment, startPartialAssessment } = useSkillContext();
 
   // アプリの初期化
   useEffect(() => {
@@ -69,7 +68,7 @@ function AppContent() {
   // ホーム画面から新規評価開始
   const handleStartNew = async () => {
     await resetAssessment(); // 既存のデータをクリア
-    setCurrentScreen(AppScreen.SELECTION);
+    setCurrentScreen(AppScreen.MODE_SELECTION);
   };
 
   // ホーム画面から進捗再開
@@ -82,32 +81,29 @@ function AppContent() {
     setCurrentScreen(AppScreen.HISTORY);
   };
 
-  // 選択画面から全スキルチェック選択
-  const handleSelectFullAssessment = async () => {
-    await setAssessmentConfig({ type: 'full' });
+  // モード選択画面のハンドラー
+  const handleSelectFullAssessment = () => {
+    startFullAssessment();
     setCurrentScreen(AppScreen.INSTRUCTION);
   };
 
-  // 選択画面から分野別チェック選択
-  const handleSelectFieldSpecific = () => {
-    setCurrentScreen(AppScreen.FIELD_SELECTION);
+  const handleSelectDomainAssessment = () => {
+    setCurrentScreen(AppScreen.DOMAIN_SELECTION);
   };
 
-  // 選択画面から戻る
-  const handleSelectionBack = () => {
+  const handleModeSelectionBack = () => {
     setCurrentScreen(AppScreen.HOME);
   };
 
-  // 分野選択画面から評価開始
-  const handleStartFieldAssessment = async (fields: FieldType[]) => {
-    setSelectedFields(fields);
-    await setAssessmentConfig({ type: 'field-specific', selectedFields: fields });
-    setCurrentScreen(AppScreen.INSTRUCTION);
+  // 分野選択画面のハンドラー
+  const handleSelectDomain = (domain: string) => {
+    startPartialAssessment(domain);
+    // 分野別チェック時はインストラクション画面をスキップ
+    setCurrentScreen(AppScreen.ASSESSMENT);
   };
 
-  // 分野選択画面から戻る
-  const handleFieldSelectionBack = () => {
-    setCurrentScreen(AppScreen.SELECTION);
+  const handleDomainSelectionBack = () => {
+    setCurrentScreen(AppScreen.MODE_SELECTION);
   };
 
   // 説明画面の完了時
@@ -171,19 +167,19 @@ function AppContent() {
             onViewHistory={handleViewHistory}
           />
         );
-      case AppScreen.SELECTION:
+      case AppScreen.MODE_SELECTION:
         return (
-          <SelectionScreen
+          <AssessmentModeSelectionScreen
             onSelectFullAssessment={handleSelectFullAssessment}
-            onSelectFieldSpecific={handleSelectFieldSpecific}
-            onBack={handleSelectionBack}
+            onSelectDomainAssessment={handleSelectDomainAssessment}
+            onBack={handleModeSelectionBack}
           />
         );
-      case AppScreen.FIELD_SELECTION:
+      case AppScreen.DOMAIN_SELECTION:
         return (
-          <FieldSelectionScreen
-            onStartFieldAssessment={handleStartFieldAssessment}
-            onBack={handleFieldSelectionBack}
+          <DomainSelectionScreen
+            onSelectDomain={handleSelectDomain}
+            onBack={handleDomainSelectionBack}
           />
         );
       case AppScreen.INSTRUCTION:

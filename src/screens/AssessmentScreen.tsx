@@ -24,13 +24,13 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
     nextSkill,
     prevSkill,
     calculateSummaries,
-    calculateFieldSummaries,
     saveProgress,
     hasSavedProgress,
     userAnswers,
     hasUnsavedResult,
     saveAssessmentResult,
-    assessmentConfig,
+    isPartialAssessment,
+    selectedDomain,
   } = useSkillContext();
 
   // SafeAreaのinsets取得
@@ -49,10 +49,8 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
 
-  // 使用するスキルリストを決定
-  const currentSkills = filteredSkills.length > 0 ? filteredSkills : skills;
-  
-  // 現在のスキル
+  // 現在のスキル（部分評価時はfilteredSkillsを使用）
+  const currentSkills = isPartialAssessment ? filteredSkills : skills;
   const currentSkill = currentSkills[currentSkillIndex];
 
   // スキルデータをログに出力
@@ -65,9 +63,9 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
     }
   }, [currentSkillIndex, currentSkill]);
 
-  // 分野の変更を検出して休憩カードを表示
+  // 分野の変更を検出して休憩カードを表示（全評価時のみ）
   useEffect(() => {
-    if (currentSkillIndex > 0 && currentSkillIndex < currentSkills.length && !showBreak) {
+    if (!isPartialAssessment && currentSkillIndex > 0 && currentSkillIndex < currentSkills.length && !showBreak) {
       const prevSkill = currentSkills[currentSkillIndex - 1];
       const currentSkillData = currentSkills[currentSkillIndex];
 
@@ -77,19 +75,15 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
         showBreakForField(prevSkill.分野); // 終了した分野の休憩カードを表示
       }
     }
-  }, [currentSkillIndex, currentSkills]);
+  }, [currentSkillIndex, currentSkills, isPartialAssessment]);
 
   // 全てのスキルが評価されたら完了
   useEffect(() => {
     if (currentSkillIndex >= currentSkills.length) {
-      if (assessmentConfig.type === 'field-specific') {
-        calculateFieldSummaries();
-      } else {
-        calculateSummaries();
-      }
+      calculateSummaries();
       onComplete();
     }
-  }, [currentSkillIndex, currentSkills.length, calculateSummaries, calculateFieldSummaries, assessmentConfig.type, onComplete]);
+  }, [currentSkillIndex, currentSkills.length, calculateSummaries, onComplete]);
 
   // スキルありの回答
   const handleYes = () => {
@@ -135,30 +129,8 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
 
   // トップに戻る
   const handleBackToHome = () => {
-    // 分野別評価の場合は履歴に保存しない
-    if (assessmentConfig.type === 'field-specific') {
-      if (userAnswers.length > 0) {
-        Alert.alert(
-          "評価を終了しますか？",
-          "分野別評価の結果は履歴に保存されません。トップに戻りますか？",
-          [
-            { text: "キャンセル", style: "cancel" },
-            {
-              text: "戻る",
-              style: "destructive",
-              onPress: onBackToHome
-            }
-          ]
-        );
-      } else {
-        onBackToHome();
-      }
-      return;
-    }
-
-    // 通常の全スキルチェックの場合
     // 評価完了後の結果画面から戻る場合は、結果を自動保存してからトップに戻る
-    if (currentSkillIndex >= currentSkills.length && hasUnsavedResult) {
+    if (currentSkillIndex >= skills.length && hasUnsavedResult) {
       Alert.alert(
         "結果を保存しますか？",
         "評価が完了しました。結果を履歴に保存してトップに戻りますか？",
@@ -215,9 +187,16 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
     <SafeAreaView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top }]}>
         <View style={styles.headerRow}>
-          <Typography variant="h5" style={styles.title}>
-            スキル評価
-          </Typography>
+          <View style={styles.titleContainer}>
+            <Typography variant="h5" style={styles.title}>
+              {isPartialAssessment ? `${selectedDomain} 評価` : 'スキル評価'}
+            </Typography>
+            {isPartialAssessment && (
+              <Typography variant="caption" style={styles.partialNote}>
+                ⚠️ 結果は履歴に保存されません
+              </Typography>
+            )}
+          </View>
           <View style={styles.headerButtons}>
             <Button
               title={isSaving ? "保存中..." : "保存"}
@@ -258,14 +237,57 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
         {/* 分野ごとの設問バランス可視化 */}
         <View style={styles.categoryBarContainer}>
           {(() => {
-            // 分野ごとの設問数を集計
+            // 部分評価の場合は選択された分野のみ表示
+            if (isPartialAssessment) {
+              const progressRatio = currentSkillIndex / currentSkills.length;
+              return (
+                <View style={{ flexDirection: "row", alignItems: "center", width: "100%", marginTop: 8 }}>
+                  <View style={{ flex: 1, alignItems: "center" }}>
+                    <View
+                      style={{
+                        height: 8,
+                        width: "100%",
+                        backgroundColor: theme.colors.gray[300],
+                        borderRadius: 4,
+                        marginHorizontal: 2,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <View
+                        style={{
+                          height: "100%",
+                          width: `${progressRatio * 100}%`,
+                          backgroundColor: theme.colors.primary.main,
+                          borderRadius: 4,
+                        }}
+                      />
+                    </View>
+                    <Typography
+                      variant="caption"
+                      style={{
+                        fontSize: 11,
+                        color: theme.colors.primary.main,
+                        marginTop: 2,
+                        textAlign: "center",
+                        fontWeight: "600",
+                      }}
+                      numberOfLines={1}
+                    >
+                      {selectedDomain}
+                    </Typography>
+                  </View>
+                </View>
+              );
+            }
+
+            // 全評価の場合は従来通りの表示
             const fieldCounts: { [field: string]: number } = {};
             currentSkills.forEach((s) => {
               fieldCounts[s.分野] = (fieldCounts[s.分野] || 0) + 1;
             });
             const total = currentSkills.length;
             const fieldOrder = [
-              "インフラエンジニア",
+              "インフラエンジニア", 
               "開発エンジニア（プログラマー）",
               "開発エンジニア（SE）",
               "マネジメント",
@@ -285,9 +307,18 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
                 {fieldProgress.map(({ field, count, start, end }, idx) => {
                   // 現在の位置がこの分野内にあるかチェック
                   const isCurrentField = currentSkillIndex >= start && currentSkillIndex < end;
-                  const fieldProgressRatio = isCurrentField
-                    ? (currentSkillIndex - start) / count
-                    : currentSkillIndex >= end ? 1 : 0;
+                  
+                  let fieldProgressRatio = 0;
+                  if (currentSkillIndex < start) {
+                    // まだこの分野に到達していない
+                    fieldProgressRatio = 0;
+                  } else if (isCurrentField) {
+                    // 現在の分野内での進捗を計算
+                    fieldProgressRatio = (currentSkillIndex - start) / count;
+                  } else if (currentSkillIndex >= end) {
+                    // この分野が完全に終了している
+                    fieldProgressRatio = 1;
+                  }
 
                   return (
                     <View key={field} style={{ flex: count, alignItems: "center" }}>
@@ -325,7 +356,9 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
                           ? "MGR"
                           : field === "開発エンジニア（SE）"
                           ? "システムエンジニア"
-                          : field.replace("開発エンジニア（", "").replace("）", "")}
+                          : field === "開発エンジニア（プログラマー）"
+                          ? "プログラマー"
+                          : field}
                       </Typography>
                     </View>
                   );
@@ -403,11 +436,6 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
         <Typography variant="caption" color={theme.colors.gray[500]}>
           {`${currentSkillIndex + 1} / ${currentSkills.length}`}
         </Typography>
-        {assessmentConfig.type === 'field-specific' && (
-          <Typography variant="caption" color={theme.colors.accent.warning} style={styles.fieldSpecificNote}>
-            ⚠️ 分野別評価の結果は履歴に保存されません
-          </Typography>
-        )}
       </View>
     </SafeAreaView>
   );
@@ -458,9 +486,16 @@ const styles = StyleSheet.create({
     color: theme.colors.gray[500],
     marginTop: theme.spacing.xs,
   },
+  titleContainer: {
+    flex: 1,
+  },
   title: {
     marginBottom: 0,
-    flex: 1,
+  },
+  partialNote: {
+    color: theme.colors.warning.main,
+    marginTop: theme.spacing.xs,
+    fontWeight: "500",
   },
   content: {
     flex: 1,
@@ -523,11 +558,6 @@ const styles = StyleSheet.create({
   footer: {
     marginTop: theme.spacing.lg,
     alignItems: "center",
-  },
-  fieldSpecificNote: {
-    marginTop: theme.spacing.xs,
-    textAlign: "center",
-    fontWeight: "600",
   },
 });
 

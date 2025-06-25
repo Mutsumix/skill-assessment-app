@@ -49,6 +49,17 @@ export const colors = {
     yes: "#28A745", // 右スワイプ（スキルあり）
     no: "#DC3545", // 左スワイプ（スキルなし）
   },
+  // 直接アクセス用（後方互換性）
+  success: {
+    main: "#28A745",
+    light: "#48B461",
+    dark: "#1E7E34",
+  },
+  warning: {
+    main: "#FFC107",
+    light: "#FFD54F",
+    dark: "#F57C00",
+  },
 };
 
 export const typography = {
