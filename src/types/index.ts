@@ -84,26 +84,3 @@ export interface UserProfile {
   assessmentHistory: AssessmentHistory[];
   savedProgress?: SavedProgress;
 }
-
-// 評価タイプの定義
-export type AssessmentType = 'full' | 'field-specific';
-
-// 分野の定義
-export type FieldType = 'インフラエンジニア' | '開発エンジニア（プログラマー）' | '開発エンジニア（SE）' | 'マネジメント';
-
-// 評価設定の型定義
-export interface AssessmentConfig {
-  type: AssessmentType;
-  selectedFields?: FieldType[];
-}
-
-// 分野別集計結果の型定義
-export interface FieldSummary {
-  field: FieldType;
-  beginnerCount: number;
-  beginnerTotal: number;
-  intermediateCount: number;
-  intermediateTotal: number;
-  advancedCount: number;
-  advancedTotal: number;
-}

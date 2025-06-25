@@ -12,10 +12,29 @@ interface InstructionScreenProps {
 
 const InstructionScreen: React.FC<InstructionScreenProps> = ({ onStart }) => {
   const [currentPage, setCurrentPage] = useState(0);
-  const { hasSavedProgress, loadSavedProgress } = useSkillContext();
+  const { hasSavedProgress, loadSavedProgress, isPartialAssessment, selectedDomain } = useSkillContext();
 
-  // 説明ページのコンテンツ
-  const pages = [
+  // 説明ページのコンテンツ（部分評価時は一部変更）
+  const pages = isPartialAssessment ? [
+    {
+      title: `${selectedDomain} 評価の方法`,
+      content:
+        `${selectedDomain}分野のスキルレベルを評価します。表示されるスキル項目に対して、ボタンで回答してください。`,
+      image: "📝✨",
+    },
+    {
+      title: "回答方法",
+      content:
+        "「はい」：スキルあり\n「いいえ」：スキルなし\n\n画面に表示されるボタンを押して回答します。",
+      image: "⭕️❌",
+    },
+    {
+      title: "結果の確認",
+      content:
+        `評価完了後、${selectedDomain}分野のスキル習得状況が棒グラフで表示されます。なお、この結果は履歴に保存されません。`,
+      image: "📊🦸‍♂️",
+    },
+  ] : [
     {
       title: "スキル評価の方法",
       content:
