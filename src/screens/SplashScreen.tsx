@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { View, StyleSheet, Image, ActivityIndicator } from "react-native";
+import Constants from "expo-constants";
 import Typography from "../components/Typography";
 import theme from "../styles/theme";
 
@@ -16,6 +17,9 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
 
     return () => clearTimeout(timer);
   }, [onComplete]);
+
+  // app.jsonからバージョン情報を取得
+  const appVersion = Constants.expoConfig?.version || "1.0.0";
 
   return (
     <View style={styles.container}>
@@ -45,7 +49,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
       </View>
 
       <Typography variant="caption" style={styles.version}>
-        Version 1.0.0
+        Version {appVersion}
       </Typography>
     </View>
   );
