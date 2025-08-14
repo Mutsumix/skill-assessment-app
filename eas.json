@@ -19,8 +19,7 @@
     },
     "production-android": {
       "android": {
-        "buildType": "apk",
-        "gradleCommand": ":app:assembleRelease"
+        "buildType": "app-bundle"
       },
       "autoIncrement": true
     }
