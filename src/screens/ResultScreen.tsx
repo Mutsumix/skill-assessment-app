@@ -186,7 +186,7 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ onRestart, historyData }) =
             )}
 
             {/* スキル一覧 */}
-            <SkillList data={displayData} />
+            <SkillList data={displayData} allSkills={skills} userAnswers={displayUserAnswers} />
           </>
         ) : (
           <View style={styles.emptyContainer}>

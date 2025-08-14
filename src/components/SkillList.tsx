@@ -1,15 +1,19 @@
-import React from "react";
-import { View, StyleSheet, ScrollView } from "react-native";
-import { SkillSummary } from "../types";
+import React, { useState } from "react";
+import { View, StyleSheet, ScrollView, Modal, TouchableOpacity, Alert } from "react-native";
+import { SkillSummary, Skill, UserAnswer } from "../types";
 import Card from "./Card";
 import Typography from "./Typography";
 import theme from "../styles/theme";
 
 interface SkillListProps {
   data: SkillSummary[];
+  allSkills?: Skill[]; // 全スキルデータを追加
+  userAnswers?: UserAnswer[]; // ユーザーの回答データを追加
 }
 
-const SkillList: React.FC<SkillListProps> = ({ data }) => {
+const SkillList: React.FC<SkillListProps> = ({ data, allSkills = [], userAnswers = [] }) => {
+  const [selectedSkills, setSelectedSkills] = useState<Skill[]>([]);
+  const [isModalVisible, setIsModalVisible] = useState(false);
   // データが空の場合は何も表示しない
   if (!data || data.length === 0) {
     return null;
@@ -23,6 +27,35 @@ const SkillList: React.FC<SkillListProps> = ({ data }) => {
     }
     groupedData[item.category].push(item);
   });
+
+  // スキル詳細を表示する関数
+  const showSkillDetails = (category: string, item: string, level: "初級" | "中級" | "上級") => {
+    // 該当するスキルを検索
+    const matchingSkills = allSkills.filter(skill => 
+      skill.分野 === category && 
+      skill.項目 === item && 
+      skill.レベル === level
+    );
+
+    if (matchingSkills.length > 0) {
+      setSelectedSkills(matchingSkills);
+      setIsModalVisible(true);
+    } else {
+      Alert.alert("情報", "該当するスキル情報が見つかりませんでした。");
+    }
+  };
+
+  // ユーザーの習得状況を取得する関数
+  const getSkillAcquisitionStatus = (skillId: number) => {
+    const answer = userAnswers.find(answer => answer.skillId === skillId);
+    return answer ? answer.hasSkill : false;
+  };
+
+  // モーダルを閉じる
+  const closeModal = () => {
+    setIsModalVisible(false);
+    setSelectedSkills([]);
+  };
 
   return (
     <Card variant="elevated" style={styles.container}>
@@ -49,7 +82,11 @@ const SkillList: React.FC<SkillListProps> = ({ data }) => {
 
                 <View style={styles.levelContainer}>
                   {/* 初級レベル */}
-                  <View style={styles.levelSection}>
+                  <TouchableOpacity 
+                    style={styles.levelSection}
+                    onPress={() => showSkillDetails(category, item.item, "初級")}
+                    activeOpacity={0.7}
+                  >
                     <Typography variant="caption" style={styles.levelTitle}>
                       初級
                     </Typography>
@@ -67,10 +104,14 @@ const SkillList: React.FC<SkillListProps> = ({ data }) => {
                         {item.beginnerCount}/{item.beginnerTotal}
                       </Typography>
                     </View>
-                  </View>
+                  </TouchableOpacity>
 
                   {/* 中級レベル */}
-                  <View style={styles.levelSection}>
+                  <TouchableOpacity 
+                    style={styles.levelSection}
+                    onPress={() => showSkillDetails(category, item.item, "中級")}
+                    activeOpacity={0.7}
+                  >
                     <Typography variant="caption" style={styles.levelTitle}>
                       中級
                     </Typography>
@@ -88,10 +129,14 @@ const SkillList: React.FC<SkillListProps> = ({ data }) => {
                         {item.intermediateCount}/{item.intermediateTotal}
                       </Typography>
                     </View>
-                  </View>
+                  </TouchableOpacity>
 
                   {/* 上級レベル */}
-                  <View style={styles.levelSection}>
+                  <TouchableOpacity 
+                    style={styles.levelSection}
+                    onPress={() => showSkillDetails(category, item.item, "上級")}
+                    activeOpacity={0.7}
+                  >
                     <Typography variant="caption" style={styles.levelTitle}>
                       上級
                     </Typography>
@@ -109,13 +154,105 @@ const SkillList: React.FC<SkillListProps> = ({ data }) => {
                         {item.advancedCount}/{item.advancedTotal}
                       </Typography>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 </View>
               </View>
             ))}
           </View>
         ))}
       </ScrollView>
+
+      {/* スキル詳細モーダル */}
+      <Modal
+        visible={isModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Typography variant="h5" style={styles.modalTitle}>
+                スキル詳細
+              </Typography>
+              <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
+                <Typography variant="h6" style={styles.closeButtonText}>×</Typography>
+              </TouchableOpacity>
+            </View>
+
+            {/* 共通情報の表示 */}
+            {selectedSkills.length > 0 && (
+              <View style={styles.commonInfoSection}>
+                <View style={styles.detailRow}>
+                  <Typography variant="caption" style={styles.detailLabel}>分野:</Typography>
+                  <Typography variant="body2" style={styles.detailValue}>
+                    {selectedSkills[0].分野}
+                  </Typography>
+                </View>
+                
+                <View style={styles.detailRow}>
+                  <Typography variant="caption" style={styles.detailLabel}>項目:</Typography>
+                  <Typography variant="body2" style={styles.detailValue}>
+                    {selectedSkills[0].項目}
+                  </Typography>
+                </View>
+                
+                <View style={styles.detailRow}>
+                  <Typography variant="caption" style={styles.detailLabel}>レベル:</Typography>
+                  <Typography variant="body2" style={styles.detailValue}>
+                    {selectedSkills[0].レベル}
+                  </Typography>
+                </View>
+              </View>
+            )}
+            
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={true}>
+              {selectedSkills.map((skill, index) => (
+                <View key={`${skill.id}-${index}`} style={styles.skillDetailCard}>
+                  <View style={styles.detailRow}>
+                    <Typography variant="caption" style={styles.detailLabel}>スキル:</Typography>
+                    <Typography variant="body2" style={styles.detailValue}>
+                      {skill.スキル}
+                    </Typography>
+                  </View>
+                  
+                  <View style={styles.detailRow}>
+                    <Typography variant="caption" style={styles.detailLabel}>説明:</Typography>
+                    <Typography variant="body2" style={styles.detailValue}>
+                      {skill.解説}
+                    </Typography>
+                  </View>
+
+                  {/* 習得状況の表示 */}
+                  <View style={styles.detailRow}>
+                    <Typography variant="caption" style={styles.detailLabel}>習得状況:</Typography>
+                    <View style={styles.acquisitionStatusContainer}>
+                      <View style={[
+                        styles.acquisitionStatusIndicator,
+                        getSkillAcquisitionStatus(skill.id) 
+                          ? styles.acquired 
+                          : styles.notAcquired
+                      ]} />
+                      <Typography 
+                        variant="body2" 
+                        style={
+                          getSkillAcquisitionStatus(skill.id) 
+                            ? {...styles.acquisitionStatusText, ...styles.acquiredText}
+                            : {...styles.acquisitionStatusText, ...styles.notAcquiredText}
+                        }
+                      >
+                        {getSkillAcquisitionStatus(skill.id) ? "習得済み" : "未習得"}
+                      </Typography>
+                    </View>
+                  </View>
+
+                  {index < selectedSkills.length - 1 && <View style={styles.skillSeparator} />}
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </Card>
   );
 };
@@ -177,6 +314,104 @@ const styles = StyleSheet.create({
     height: "100%",
     textAlignVertical: "center",
     fontSize: 10,
+  },
+  // モーダル関連のスタイル
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.lg,
+    margin: theme.spacing.lg,
+    maxWidth: '90%',
+    maxHeight: '80%',
+    minWidth: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.gray[200],
+    paddingBottom: theme.spacing.sm,
+  },
+  modalTitle: {
+    flex: 1,
+    fontWeight: 'bold',
+  },
+  closeButton: {
+    padding: theme.spacing.xs,
+    borderRadius: theme.borderRadius.sm,
+    backgroundColor: theme.colors.gray[100],
+  },
+  closeButtonText: {
+    fontSize: 20,
+    color: theme.colors.gray[600],
+  },
+  commonInfoSection: {
+    backgroundColor: theme.colors.gray[50],
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+    borderRadius: theme.borderRadius.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.gray[200],
+  },
+  modalBody: {
+    flex: 1,
+  },
+  skillDetailCard: {
+    paddingVertical: theme.spacing.sm,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    marginBottom: theme.spacing.sm,
+    alignItems: 'flex-start',
+  },
+  detailLabel: {
+    width: 70,
+    fontWeight: 'bold',
+    marginRight: theme.spacing.sm,
+    color: theme.colors.gray[700],
+  },
+  detailValue: {
+    flex: 1,
+    lineHeight: 20,
+  },
+  acquisitionStatusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  acquisitionStatusIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: theme.spacing.xs,
+  },
+  acquired: {
+    backgroundColor: theme.colors.success.main,
+  },
+  notAcquired: {
+    backgroundColor: theme.colors.gray[400],
+  },
+  acquisitionStatusText: {
+    fontWeight: '500',
+  },
+  acquiredText: {
+    color: theme.colors.success.main,
+  },
+  notAcquiredText: {
+    color: theme.colors.gray[600],
+  },
+  skillSeparator: {
+    height: 1,
+    backgroundColor: theme.colors.gray[200],
+    marginVertical: theme.spacing.md,
   },
 });
 
