@@ -195,8 +195,8 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
     await clearSavedProgress();
   };
 
-  // 結果を集計する
-  const calculateSummaries = () => {
+  // 結果を集計する（同期版）- 結果を直接返す
+  const calculateSummariesSync = (): SkillSummary[] => {
     const currentSkills = isPartialAssessment ? filteredSkills : skills;
     const grouped = groupSkillsByCategoryAndItem(currentSkills);
     const results: SkillSummary[] = [];
@@ -234,6 +234,12 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
       });
     });
 
+    return results;
+  };
+
+  // 結果を集計する（非同期版）- 状態を更新
+  const calculateSummaries = () => {
+    const results = calculateSummariesSync();
     setSummaries(results);
     setHasUnsavedResult(true); // 結果が生成されたら未保存状態にする
   };
@@ -308,9 +314,8 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
     try {
       setIsSavingResult(true); // 保存開始
 
-      if (summaries.length === 0) {
-        calculateSummaries();
-      }
+      // 結果を確実に取得（同期版を使用）
+      const currentSummaries = summaries.length === 0 ? calculateSummariesSync() : summaries;
 
       // スキル数の集計
       const totalSkills = skills.length;
@@ -331,7 +336,7 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
       const assessmentResult: AssessmentHistory = {
         id: `assessment_${Date.now()}`,
         date: new Date(),
-        results: summaries,
+        results: currentSummaries,
         userAnswers: [...userAnswers],
         totalSkills,
         completionRate: (userAnswers.length / totalSkills) * 100,
@@ -346,6 +351,11 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
       };
 
       await AssessmentHistoryManager.save(assessmentResult);
+
+      // summariesが空だった場合は状態も更新
+      if (summaries.length === 0) {
+        setSummaries(currentSummaries);
+      }
 
       // 評価履歴を更新
       const updatedHistory = await AssessmentHistoryManager.getAll();
