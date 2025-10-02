@@ -1,11 +1,12 @@
 import React, { useEffect } from "react";
-import { View, StyleSheet, Alert } from "react-native";
+import { View, StyleSheet, Alert, TouchableOpacity, Linking } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Typography from "../components/Typography";
 import Button from "../components/Button";
 import Card from "../components/Card";
 import theme from "../styles/theme";
 import { useSkillContext } from "../contexts/SkillContext";
+import { FEEDBACK_CONFIG } from "../config/feedback";
 
 interface HomeScreenProps {
   onStartNew: () => void;
@@ -71,10 +72,50 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     }
   };
 
+  // フィードバック機能
+  const handleFeedback = () => {
+    Alert.alert(
+      FEEDBACK_CONFIG.DIALOG_CONFIG.title,
+      FEEDBACK_CONFIG.DIALOG_CONFIG.message,
+      [
+        {
+          text: FEEDBACK_CONFIG.DIALOG_CONFIG.cancelText,
+          style: "cancel"
+        },
+        {
+          text: FEEDBACK_CONFIG.DIALOG_CONFIG.confirmText,
+          onPress: async () => {
+            try {
+              const canOpen = await Linking.canOpenURL(FEEDBACK_CONFIG.FEEDBACK_FORM_URL);
+              if (canOpen) {
+                await Linking.openURL(FEEDBACK_CONFIG.FEEDBACK_FORM_URL);
+              } else {
+                Alert.alert("エラー", "フィードバックフォームを開けませんでした。");
+              }
+            } catch (error) {
+              Alert.alert("エラー", "フィードバックフォームを開けませんでした。");
+            }
+          }
+        }
+      ]
+    );
+  };
+
 
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* フィードバックボタン - 画面の一番右上 */}
+      <TouchableOpacity 
+        style={[styles.feedbackButton, { top: insets.top + theme.spacing.sm }]}
+        onPress={handleFeedback}
+        activeOpacity={0.7}
+      >
+        <Typography style={styles.feedbackIcon}>
+          {FEEDBACK_CONFIG.BUTTON_CONFIG.icon}
+        </Typography>
+      </TouchableOpacity>
+
       <View style={[styles.content, { paddingTop: insets.top + theme.spacing.md }]}>
         {/* ヘッダー */}
         <View style={styles.header}>
@@ -190,6 +231,25 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: theme.spacing.lg,
     alignItems: "center",
+  },
+  feedbackButton: {
+    position: "absolute",
+    right: theme.spacing.md,
+    width: FEEDBACK_CONFIG.BUTTON_CONFIG.size,
+    height: FEEDBACK_CONFIG.BUTTON_CONFIG.size,
+    borderRadius: FEEDBACK_CONFIG.BUTTON_CONFIG.borderRadius,
+    backgroundColor: theme.colors.gray[100],
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: theme.colors.common.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+    zIndex: 1000,
+  },
+  feedbackIcon: {
+    fontSize: 20,
   },
   title: {
     marginBottom: theme.spacing.sm,

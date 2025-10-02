@@ -99,7 +99,6 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
           return;
         }
 
-        console.log(`読み込まれたスキル数: ${loadedSkills.length}`);
         setSkills(loadedSkills);
         setCategories(extractCategories(loadedSkills));
         setFilteredSkills(loadedSkills); // 初期状態では全スキルを設定
@@ -114,10 +113,6 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
           new Date(b.date).getTime() - new Date(a.date).getTime()
         );
         setAssessmentHistory(sortedHistory);
-        console.log(`評価履歴数: ${sortedHistory.length}`);
-        if (sortedHistory.length > 0) {
-          console.log(`最新の評価: ${sortedHistory[0].date}`);
-        }
 
         setIsLoading(false);
       } catch (err) {
@@ -432,7 +427,6 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
       const comparisons = compareWithPreviousAssessment();
       setProgressComparisons(comparisons);
 
-      console.log(`評価履歴${history.length}件を読み込みました`);
     } catch (error) {
       console.error('評価履歴読み込みに失敗しました:', error);
     }
