@@ -37,6 +37,7 @@ interface SkillContextType {
   resetAssessment: () => Promise<void>;
   calculateSummaries: () => void;
   getPreviousAnswer: (skillId: number) => boolean | undefined;
+  getPreviousSummaries: () => SkillSummary[] | undefined;
   // 新メソッド
   saveProgress: () => Promise<void>;
   loadSavedProgress: () => Promise<boolean>;
@@ -164,6 +165,20 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
     
     console.log(`skillId ${skillId}の前回回答: ${previousAnswer?.hasSkill}`);
     return previousAnswer?.hasSkill;
+  };
+
+  // 前回の集計結果を取得する
+  const getPreviousSummaries = (): SkillSummary[] | undefined => {
+    console.log('getPreviousSummaries: assessmentHistory length:', assessmentHistory.length);
+    if (assessmentHistory.length < 2) return undefined; // 2回以上の評価が必要
+    
+    // 日付でソートして2番目に新しい履歴（前回の結果）を取得
+    const sortedHistory = [...assessmentHistory].sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    
+    console.log('getPreviousSummaries: returning previous results:', sortedHistory[1].results.length);
+    return sortedHistory[1].results; // インデックス1が前回の結果
   };
 
   // スキルに回答する
@@ -543,6 +558,7 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
     startPartialAssessment,
     startFullAssessment,
     getPreviousAnswer,
+    getPreviousSummaries,
   };
 
   return <SkillContext.Provider value={value}>{children}</SkillContext.Provider>;

@@ -27,12 +27,38 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ onRestart, historyData }) =
     hasUnsavedResult,
     isSavingResult,
     isPartialAssessment,
-    selectedDomain
+    selectedDomain,
+    getPreviousSummaries,
+    assessmentHistory
   } = useSkillContext();
 
   // 表示するデータを決定（履歴データがある場合はそちらを使用）
   const displayData = historyData ? historyData.results : summaries;
   const displayUserAnswers = historyData ? historyData.userAnswers : userAnswers;
+  // 前回のサマリーを取得
+  const previousSummaries = (() => {
+    if (historyData) {
+      // 履歴表示時：表示中の履歴より前の履歴を取得
+      const sortedHistory = [...assessmentHistory].sort((a, b) => 
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      
+      // 表示中の履歴のインデックスを見つける
+      const currentIndex = sortedHistory.findIndex(h => h.date === historyData.date);
+      console.log('履歴表示時: currentIndex:', currentIndex, 'total:', sortedHistory.length);
+      
+      if (currentIndex >= 0 && currentIndex < sortedHistory.length - 1) {
+        // 次のインデックス（より古い履歴）を前回として使用
+        console.log('履歴表示時の前回結果:', sortedHistory[currentIndex + 1].results.length);
+        return sortedHistory[currentIndex + 1].results;
+      }
+      return undefined;
+    } else {
+      // 通常の結果表示時：最新の履歴の前の履歴を取得
+      return getPreviousSummaries();
+    }
+  })();
+  console.log('ResultScreen: previousSummaries length:', previousSummaries?.length || 0);
 
   // 評価完了時の自動保存（重複保存防止強化）
   useEffect(() => {
@@ -186,7 +212,12 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ onRestart, historyData }) =
             )}
 
             {/* スキル一覧 */}
-            <SkillList data={displayData} allSkills={skills} userAnswers={displayUserAnswers} />
+            <SkillList 
+              data={displayData} 
+              allSkills={skills} 
+              userAnswers={displayUserAnswers}
+              previousSummaries={previousSummaries}
+            />
           </>
         ) : (
           <View style={styles.emptyContainer}>
