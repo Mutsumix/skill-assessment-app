@@ -1,6 +1,6 @@
 {
   "name": "skill-assessment-app",
-  "version": "3.3.19",
+  "version": "3.4.0",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
