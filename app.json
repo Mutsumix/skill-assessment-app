@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -15,7 +16,6 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.mutsumix.skillassessment",
       "buildNumber": "7",
-      "newArchEnabled": false,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -27,8 +27,7 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.mutsumix.skillassessment",
-      "versionCode": 7,
-      "newArchEnabled": false
+      "versionCode": 7
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -37,20 +36,6 @@
       "eas": {
         "projectId": "9940adcc-c976-4528-a7fc-cc7a82248096"
       }
-    },
-    "plugins": [
-      [
-        "expo-build-properties",
-        {
-          "ios": {
-            "newArchEnabled": false,
-            "buildReactNativeFromSource": true
-          },
-          "android": {
-            "newArchEnabled": false
-          }
-        }
-      ]
-    ]
+    }
   }
 }
