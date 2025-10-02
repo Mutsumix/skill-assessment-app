@@ -36,6 +36,7 @@ interface SkillContextType {
   prevSkill: () => void;
   resetAssessment: () => Promise<void>;
   calculateSummaries: () => void;
+  getPreviousAnswer: (skillId: number) => boolean | undefined;
   // 新メソッド
   saveProgress: () => Promise<void>;
   loadSavedProgress: () => Promise<boolean>;
@@ -106,9 +107,16 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
         const hasSaved = await ProgressManager.hasSavedProgress();
         setHasSavedProgress(hasSaved);
 
-        // 評価履歴の読み込み
+        // 評価履歴の読み込み（日付でソート）
         const history = await AssessmentHistoryManager.getAll();
-        setAssessmentHistory(history);
+        const sortedHistory = history.sort((a, b) => 
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+        setAssessmentHistory(sortedHistory);
+        console.log(`評価履歴数: ${sortedHistory.length}`);
+        if (sortedHistory.length > 0) {
+          console.log(`最新の評価: ${sortedHistory[0].date}`);
+        }
 
         setIsLoading(false);
       } catch (err) {
@@ -130,6 +138,33 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
   //     return () => clearTimeout(saveTimer);
   //   }
   // }, [userAnswers, currentSkillIndex]);
+
+  // 前回の回答を取得する
+  const getPreviousAnswer = (skillId: number): boolean | undefined => {
+    console.log(`getPreviousAnswer called for skillId: ${skillId}`);
+    
+    // 最新の評価履歴から該当スキルの回答を取得
+    if (assessmentHistory.length === 0) {
+      console.log('評価履歴がありません');
+      return undefined;
+    }
+    
+    // 日付でソートして最新の履歴を取得
+    const sortedHistory = [...assessmentHistory].sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    
+    const latestHistory = sortedHistory[0];
+    console.log(`最新の評価日時: ${latestHistory.date}`);
+    console.log(`最新評価のuserAnswers数: ${latestHistory.userAnswers.length}`);
+    
+    const previousAnswer = latestHistory.userAnswers.find(
+      (answer) => answer.skillId === skillId
+    );
+    
+    console.log(`skillId ${skillId}の前回回答: ${previousAnswer?.hasSkill}`);
+    return previousAnswer?.hasSkill;
+  };
 
   // スキルに回答する
   const answerSkill = (skillId: number, hasSkill: boolean) => {
@@ -507,6 +542,7 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
     clearAllHistory,
     startPartialAssessment,
     startFullAssessment,
+    getPreviousAnswer,
   };
 
   return <SkillContext.Provider value={value}>{children}</SkillContext.Provider>;

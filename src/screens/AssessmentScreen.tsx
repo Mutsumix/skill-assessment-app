@@ -31,6 +31,7 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
     saveAssessmentResult,
     isPartialAssessment,
     selectedDomain,
+    getPreviousAnswer,
   } = useSkillContext();
 
   // SafeAreaのinsets取得
@@ -52,16 +53,22 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
   // 現在のスキル（部分評価時はfilteredSkillsを使用）
   const currentSkills = isPartialAssessment ? filteredSkills : skills;
   const currentSkill = currentSkills[currentSkillIndex];
+  
+  // 前回の回答を取得
+  const previousAnswer = currentSkill ? getPreviousAnswer(currentSkill.id) : undefined;
 
   // スキルデータをログに出力
   useEffect(() => {
     console.log(`AssessmentScreen - 現在のスキルインデックス: ${currentSkillIndex}`);
     if (currentSkill) {
       console.log(`AssessmentScreen - 現在のスキル: ${currentSkill.スキル}, ID: ${currentSkill.id}`);
+      console.log(`前回の回答: ${previousAnswer}`);
+      console.log(`はいボタン: ${previousAnswer === true ? 'primary' : 'outline'}`);
+      console.log(`いいえボタン: ${previousAnswer === false ? 'primary' : 'outline'}`);
     } else {
       console.log("AssessmentScreen - 現在のスキルがnullです");
     }
-  }, [currentSkillIndex, currentSkill]);
+  }, [currentSkillIndex, currentSkill, previousAnswer]);
 
   // 分野の変更を検出して休憩カードを表示（全評価時のみ）
   useEffect(() => {
@@ -418,14 +425,22 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
               <Button
                 title="はい"
                 onPress={handleYes}
-                variant="primary"
-                style={styles.button}
+                variant={previousAnswer === true ? "primary" : "outline"}
+                style={[
+                  styles.button,
+                  previousAnswer === true && { backgroundColor: theme.colors.primary.main }
+                ]}
+                textStyle={previousAnswer === true ? { color: theme.colors.common.white } : undefined}
               />
               <Button
                 title="いいえ"
                 onPress={handleNo}
-                variant="outline"
-                style={styles.button}
+                variant={previousAnswer === false ? "primary" : "outline"}
+                style={[
+                  styles.button,
+                  previousAnswer === false && { backgroundColor: theme.colors.primary.main }
+                ]}
+                textStyle={previousAnswer === false ? { color: theme.colors.common.white } : undefined}
               />
             </View>
           </Card>
