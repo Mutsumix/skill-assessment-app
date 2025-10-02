@@ -9,11 +9,15 @@ interface SkillListProps {
   data: SkillSummary[];
   allSkills?: Skill[]; // 全スキルデータを追加
   userAnswers?: UserAnswer[]; // ユーザーの回答データを追加
+  previousSummaries?: SkillSummary[]; // 前回の集計結果
 }
 
-const SkillList: React.FC<SkillListProps> = ({ data, allSkills = [], userAnswers = [] }) => {
+const SkillList: React.FC<SkillListProps> = ({ data, allSkills = [], userAnswers = [], previousSummaries = [] }) => {
   const [selectedSkills, setSelectedSkills] = useState<Skill[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
+
+  // デバッグ用ログ
+  console.log('SkillList: previousSummaries', previousSummaries?.length || 0);
   // データが空の場合は何も表示しない
   if (!data || data.length === 0) {
     return null;
@@ -31,9 +35,9 @@ const SkillList: React.FC<SkillListProps> = ({ data, allSkills = [], userAnswers
   // スキル詳細を表示する関数
   const showSkillDetails = (category: string, item: string, level: "初級" | "中級" | "上級") => {
     // 該当するスキルを検索
-    const matchingSkills = allSkills.filter(skill => 
-      skill.分野 === category && 
-      skill.項目 === item && 
+    const matchingSkills = allSkills.filter(skill =>
+      skill.分野 === category &&
+      skill.項目 === item &&
       skill.レベル === level
     );
 
@@ -49,6 +53,54 @@ const SkillList: React.FC<SkillListProps> = ({ data, allSkills = [], userAnswers
   const getSkillAcquisitionStatus = (skillId: number) => {
     const answer = userAnswers.find(answer => answer.skillId === skillId);
     return answer ? answer.hasSkill : false;
+  };
+
+  // 前回との差分を計算する関数
+  const calculateDifference = (current: SkillSummary, level: 'beginner' | 'intermediate' | 'advanced') => {
+    console.log('calculateDifference called:', current.item, level, 'previousSummaries:', previousSummaries?.length);
+    if (!previousSummaries || previousSummaries.length === 0) return null;
+
+    const previous = previousSummaries.find(p =>
+      p.category === current.category && p.item === current.item
+    );
+
+    if (!previous) return null;
+
+    let currentCount, previousCount;
+    switch (level) {
+      case 'beginner':
+        currentCount = current.beginnerCount;
+        previousCount = previous.beginnerCount;
+        break;
+      case 'intermediate':
+        currentCount = current.intermediateCount;
+        previousCount = previous.intermediateCount;
+        break;
+      case 'advanced':
+        currentCount = current.advancedCount;
+        previousCount = previous.advancedCount;
+        break;
+    }
+
+    const diff = currentCount - previousCount;
+    console.log('Diff calculated:', current.item, level, 'current:', currentCount, 'previous:', previousCount, 'diff:', diff);
+    return diff !== 0 ? diff : null;
+  };
+
+  // 成長があったかどうかをチェック
+  const hasGrowth = (current: SkillSummary) => {
+    if (!previousSummaries || previousSummaries.length === 0) return false;
+
+    const previous = previousSummaries.find(p =>
+      p.category === current.category && p.item === current.item
+    );
+
+    if (!previous) return false;
+
+    const currentTotal = current.beginnerCount + current.intermediateCount + current.advancedCount;
+    const previousTotal = previous.beginnerCount + previous.intermediateCount + previous.advancedCount;
+
+    return currentTotal > previousTotal;
   };
 
   // モーダルを閉じる
@@ -76,20 +128,33 @@ const SkillList: React.FC<SkillListProps> = ({ data, allSkills = [], userAnswers
 
             {items.map((item, index) => (
               <View key={`${item.category}-${item.item}-${index}`} style={styles.itemContainer}>
-                <Typography variant="h6" style={styles.itemTitle}>
-                  {item.item}
-                </Typography>
+                <View style={styles.itemTitleContainer}>
+                  <Typography variant="h6" style={styles.itemTitle}>
+                    {item.item}{hasGrowth(item) ? '✨' : ''}
+                  </Typography>
+                </View>
 
                 <View style={styles.levelContainer}>
                   {/* 初級レベル */}
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.levelSection}
                     onPress={() => showSkillDetails(category, item.item, "初級")}
                     activeOpacity={0.7}
                   >
-                    <Typography variant="caption" style={styles.levelTitle}>
-                      初級
-                    </Typography>
+                    <View style={styles.levelHeader}>
+                      <Typography variant="caption" style={styles.levelTitle}>
+                        初級 {item.beginnerCount}/{item.beginnerTotal}
+                        {(() => {
+                          const diff = calculateDifference(item, 'beginner');
+                          if (diff && diff > 0) {
+                            return <Typography style={styles.diffPositive}> (+{diff})</Typography>;
+                          } else if (diff && diff < 0) {
+                            return <Typography style={styles.diffNegative}> ({diff})</Typography>;
+                          }
+                          return null;
+                        })()}
+                      </Typography>
+                    </View>
                     <View style={styles.progressContainer}>
                       <View
                         style={[
@@ -100,21 +165,29 @@ const SkillList: React.FC<SkillListProps> = ({ data, allSkills = [], userAnswers
                           },
                         ]}
                       />
-                      <Typography variant="caption" style={styles.progressText}>
-                        {item.beginnerCount}/{item.beginnerTotal}
-                      </Typography>
                     </View>
                   </TouchableOpacity>
 
                   {/* 中級レベル */}
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.levelSection}
                     onPress={() => showSkillDetails(category, item.item, "中級")}
                     activeOpacity={0.7}
                   >
-                    <Typography variant="caption" style={styles.levelTitle}>
-                      中級
-                    </Typography>
+                    <View style={styles.levelHeader}>
+                      <Typography variant="caption" style={styles.levelTitle}>
+                        中級 {item.intermediateCount}/{item.intermediateTotal}
+                        {(() => {
+                          const diff = calculateDifference(item, 'intermediate');
+                          if (diff && diff > 0) {
+                            return <Typography style={styles.diffPositive}> (+{diff})</Typography>;
+                          } else if (diff && diff < 0) {
+                            return <Typography style={styles.diffNegative}> ({diff})</Typography>;
+                          }
+                          return null;
+                        })()}
+                      </Typography>
+                    </View>
                     <View style={styles.progressContainer}>
                       <View
                         style={[
@@ -125,21 +198,29 @@ const SkillList: React.FC<SkillListProps> = ({ data, allSkills = [], userAnswers
                           },
                         ]}
                       />
-                      <Typography variant="caption" style={styles.progressText}>
-                        {item.intermediateCount}/{item.intermediateTotal}
-                      </Typography>
                     </View>
                   </TouchableOpacity>
 
                   {/* 上級レベル */}
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.levelSection}
                     onPress={() => showSkillDetails(category, item.item, "上級")}
                     activeOpacity={0.7}
                   >
-                    <Typography variant="caption" style={styles.levelTitle}>
-                      上級
-                    </Typography>
+                    <View style={styles.levelHeader}>
+                      <Typography variant="caption" style={styles.levelTitle}>
+                        上級 {item.advancedCount}/{item.advancedTotal}
+                        {(() => {
+                          const diff = calculateDifference(item, 'advanced');
+                          if (diff && diff > 0) {
+                            return <Typography style={styles.diffPositive}> (+{diff})</Typography>;
+                          } else if (diff && diff < 0) {
+                            return <Typography style={styles.diffNegative}> ({diff})</Typography>;
+                          }
+                          return null;
+                        })()}
+                      </Typography>
+                    </View>
                     <View style={styles.progressContainer}>
                       <View
                         style={[
@@ -150,9 +231,6 @@ const SkillList: React.FC<SkillListProps> = ({ data, allSkills = [], userAnswers
                           },
                         ]}
                       />
-                      <Typography variant="caption" style={styles.progressText}>
-                        {item.advancedCount}/{item.advancedTotal}
-                      </Typography>
                     </View>
                   </TouchableOpacity>
                 </View>
@@ -189,14 +267,14 @@ const SkillList: React.FC<SkillListProps> = ({ data, allSkills = [], userAnswers
                     {selectedSkills[0].分野}
                   </Typography>
                 </View>
-                
+
                 <View style={styles.detailRow}>
                   <Typography variant="caption" style={styles.detailLabel}>項目:</Typography>
                   <Typography variant="body2" style={styles.detailValue}>
                     {selectedSkills[0].項目}
                   </Typography>
                 </View>
-                
+
                 <View style={styles.detailRow}>
                   <Typography variant="caption" style={styles.detailLabel}>レベル:</Typography>
                   <Typography variant="body2" style={styles.detailValue}>
@@ -205,7 +283,7 @@ const SkillList: React.FC<SkillListProps> = ({ data, allSkills = [], userAnswers
                 </View>
               </View>
             )}
-            
+
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={true}>
               {selectedSkills.map((skill, index) => (
                 <View key={`${skill.id}-${index}`} style={styles.skillDetailCard}>
@@ -215,7 +293,7 @@ const SkillList: React.FC<SkillListProps> = ({ data, allSkills = [], userAnswers
                       {skill.スキル}
                     </Typography>
                   </View>
-                  
+
                   <View style={styles.detailRow}>
                     <Typography variant="caption" style={styles.detailLabel}>説明:</Typography>
                     <Typography variant="body2" style={styles.detailValue}>
@@ -229,14 +307,14 @@ const SkillList: React.FC<SkillListProps> = ({ data, allSkills = [], userAnswers
                     <View style={styles.acquisitionStatusContainer}>
                       <View style={[
                         styles.acquisitionStatusIndicator,
-                        getSkillAcquisitionStatus(skill.id) 
-                          ? styles.acquired 
+                        getSkillAcquisitionStatus(skill.id)
+                          ? styles.acquired
                           : styles.notAcquired
                       ]} />
-                      <Typography 
-                        variant="body2" 
+                      <Typography
+                        variant="body2"
                         style={
-                          getSkillAcquisitionStatus(skill.id) 
+                          getSkillAcquisitionStatus(skill.id)
                             ? {...styles.acquisitionStatusText, ...styles.acquiredText}
                             : {...styles.acquisitionStatusText, ...styles.notAcquiredText}
                         }
@@ -282,20 +360,30 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
     paddingHorizontal: theme.spacing.sm,
   },
-  itemTitle: {
+  itemTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: theme.spacing.xs,
+  },
+  itemTitle: {
+    flex: 1,
   },
   levelContainer: {
     marginLeft: theme.spacing.md,
   },
   levelSection: {
     marginBottom: theme.spacing.xs,
+    width: "100%",
+  },
+  levelHeader: {
+    marginBottom: 4,
   },
   levelTitle: {
     marginBottom: 2,
   },
   progressContainer: {
-    height: 16,
+    height: 12,
+    width: "95%",
     backgroundColor: theme.colors.gray[200],
     borderRadius: theme.borderRadius.sm,
     overflow: "hidden",
@@ -306,14 +394,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     top: 0,
-  },
-  progressText: {
-    position: "absolute",
-    right: theme.spacing.xs,
-    top: 0,
-    height: "100%",
-    textAlignVertical: "center",
-    fontSize: 10,
   },
   // モーダル関連のスタイル
   modalOverlay: {
@@ -412,6 +492,16 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: theme.colors.gray[200],
     marginVertical: theme.spacing.md,
+  },
+  diffPositive: {
+    color: theme.colors.success.main,
+    fontSize: 9,
+    fontWeight: '600',
+  },
+  diffNegative: {
+    color: theme.colors.accent.error,
+    fontSize: 9,
+    fontWeight: '600',
   },
 });
 

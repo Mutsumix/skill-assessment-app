@@ -384,6 +384,14 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
           />
         ) : (
           <Card variant="elevated" style={styles.card}>
+            {/* 前回の回答表示 */}
+            {previousAnswer !== undefined && (
+              <View style={styles.previousAnswerContainer}>
+                <Typography variant="caption" style={styles.previousAnswerText}>
+                  前回：{previousAnswer ? 'はい' : 'いいえ'}
+                </Typography>
+              </View>
+            )}
 
             <Typography variant="body2" color={theme.colors.gray[600]} style={styles.skillSubtitle}>
               {`${currentSkill.分野 || "不明"} > ${currentSkill.項目 || "不明"} > ${currentSkill.レベル || "不明"}`}
@@ -527,6 +535,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.xs,
   },
   skillSubtitle: {
+    marginTop: theme.spacing.lg,
     marginBottom: theme.spacing.md,
   },
   divider: {
@@ -541,7 +550,7 @@ const styles = StyleSheet.create({
   backTextContainer: {
     position: "absolute",
     top: 8,
-    right: 12,
+    left: 12,
     zIndex: 10,
   },
   backText: {
@@ -573,6 +582,20 @@ const styles = StyleSheet.create({
   footer: {
     marginTop: theme.spacing.lg,
     alignItems: "center",
+  },
+  previousAnswerContainer: {
+    position: "absolute",
+    top: theme.spacing.sm,
+    right: theme.spacing.sm,
+    backgroundColor: theme.colors.gray[100],
+    paddingHorizontal: theme.spacing.xs,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.sm,
+    zIndex: 5,
+  },
+  previousAnswerText: {
+    color: theme.colors.gray[600],
+    fontSize: 11,
   },
 });
 

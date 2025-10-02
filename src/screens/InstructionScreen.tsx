@@ -25,7 +25,7 @@ const InstructionScreen: React.FC<InstructionScreenProps> = ({ onStart }) => {
     {
       title: "回答方法",
       content:
-        "「はい」：スキルあり\n「いいえ」：スキルなし\n\n画面に表示されるボタンを押して回答します。",
+        "「はい」：スキルあり\n「いいえ」：スキルなし\n\n前回の回答がある場合、緑色のボタンで表示されます。カードの右上に「前回：はい/いいえ」も表示されます。",
       image: "⭕️❌",
     },
     {
@@ -44,7 +44,7 @@ const InstructionScreen: React.FC<InstructionScreenProps> = ({ onStart }) => {
     {
       title: "回答方法",
       content:
-        "「はい」：スキルあり\n「いいえ」：スキルなし\n\n画面に表示されるボタンを押して回答します。",
+        "「はい」：スキルあり\n「いいえ」：スキルなし\n\n前回の回答がある場合、緑色のボタンで表示されます。カードの右上に「前回：はい/いいえ」も表示されます。",
       image: "⭕️❌",
     },
     {
