@@ -59,15 +59,6 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
 
   // スキルデータをログに出力
   useEffect(() => {
-    console.log(`AssessmentScreen - 現在のスキルインデックス: ${currentSkillIndex}`);
-    if (currentSkill) {
-      console.log(`AssessmentScreen - 現在のスキル: ${currentSkill.スキル}, ID: ${currentSkill.id}`);
-      console.log(`前回の回答: ${previousAnswer}`);
-      console.log(`はいボタン: ${previousAnswer === true ? 'primary' : 'outline'}`);
-      console.log(`いいえボタン: ${previousAnswer === false ? 'primary' : 'outline'}`);
-    } else {
-      console.log("AssessmentScreen - 現在のスキルがnullです");
-    }
   }, [currentSkillIndex, currentSkill, previousAnswer]);
 
   // 分野の変更を検出して休憩カードを表示（全評価時のみ）
@@ -78,7 +69,6 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
 
       // 分野が変わったら休憩カードを表示（終了した分野の休憩カードを表示）
       if (prevSkill.分野 !== currentSkillData.分野) {
-        console.log(`分野が変わりました: ${prevSkill.分野} -> ${currentSkillData.分野}`);
         showBreakForField(prevSkill.分野); // 終了した分野の休憩カードを表示
       }
     }
@@ -95,7 +85,6 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
   // スキルありの回答
   const handleYes = () => {
     if (currentSkill) {
-      console.log(`回答: スキルあり, ID: ${currentSkill.id}, スキル名: ${currentSkill.スキル}`);
       answerSkill(currentSkill.id, true);
       nextSkill();
     }
@@ -104,7 +93,6 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
   // スキルなしの回答
   const handleNo = () => {
     if (currentSkill) {
-      console.log(`回答: スキルなし, ID: ${currentSkill.id}, スキル名: ${currentSkill.スキル}`);
       answerSkill(currentSkill.id, false);
       nextSkill();
     }

@@ -137,11 +137,9 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
 
   // 前回の回答を取得する
   const getPreviousAnswer = (skillId: number): boolean | undefined => {
-    console.log(`getPreviousAnswer called for skillId: ${skillId}`);
     
     // 最新の評価履歴から該当スキルの回答を取得
     if (assessmentHistory.length === 0) {
-      console.log('評価履歴がありません');
       return undefined;
     }
     
@@ -151,14 +149,11 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
     );
     
     const latestHistory = sortedHistory[0];
-    console.log(`最新の評価日時: ${latestHistory.date}`);
-    console.log(`最新評価のuserAnswers数: ${latestHistory.userAnswers.length}`);
     
     const previousAnswer = latestHistory.userAnswers.find(
       (answer) => answer.skillId === skillId
     );
     
-    console.log(`skillId ${skillId}の前回回答: ${previousAnswer?.hasSkill}`);
     return previousAnswer?.hasSkill;
   };
 
@@ -193,25 +188,17 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
   // 次のスキルに進む
   const nextSkill = () => {
     const currentSkills = isPartialAssessment ? filteredSkills : skills;
-    console.log(`現在のスキルインデックス: ${currentSkillIndex}, スキル総数: ${currentSkills.length}`);
 
     if (currentSkillIndex < currentSkills.length - 1) {
       const nextIndex = currentSkillIndex + 1;
-      console.log(`次のスキルインデックス: ${nextIndex}`);
 
-      // 次のスキルの情報をログに出力
-      if (currentSkills[nextIndex]) {
-        console.log(`次のスキル: ${currentSkills[nextIndex].スキル}, ID: ${currentSkills[nextIndex].id}`);
-      }
 
       setCurrentSkillIndex(nextIndex);
       // 進捗状況を更新（次のスキルに進んだ後に計算）
       const newProgress = Math.round(((nextIndex + 1) / currentSkills.length) * 100);
-      console.log(`新しい進捗率: ${newProgress}%`);
       setProgress(newProgress);
     } else if (currentSkillIndex === currentSkills.length - 1) {
       // 最後のスキルの場合は100%にする
-      console.log("最後のスキルに到達しました");
       setProgress(100);
       setCurrentSkillIndex(currentSkillIndex + 1);
     }
@@ -327,7 +314,6 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
     try {
       await ProgressManager.clear();
       setHasSavedProgress(false);
-      console.log('保存された進捗が削除されました');
     } catch (error) {
       console.error('進捗削除に失敗しました:', error);
     }
@@ -514,7 +500,6 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
     setUserAnswers([]);
     setSummaries([]);
     setHasUnsavedResult(false);
-    console.log(`全評価開始: スキル数: ${skills.length}`);
   };
 
   const value = {
