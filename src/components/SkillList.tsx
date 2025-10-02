@@ -15,9 +15,6 @@ interface SkillListProps {
 const SkillList: React.FC<SkillListProps> = ({ data, allSkills = [], userAnswers = [], previousSummaries = [] }) => {
   const [selectedSkills, setSelectedSkills] = useState<Skill[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
-
-  // デバッグ用ログ
-  console.log('SkillList: previousSummaries', previousSummaries?.length || 0);
   // データが空の場合は何も表示しない
   if (!data || data.length === 0) {
     return null;
@@ -57,7 +54,6 @@ const SkillList: React.FC<SkillListProps> = ({ data, allSkills = [], userAnswers
 
   // 前回との差分を計算する関数
   const calculateDifference = (current: SkillSummary, level: 'beginner' | 'intermediate' | 'advanced') => {
-    console.log('calculateDifference called:', current.item, level, 'previousSummaries:', previousSummaries?.length);
     if (!previousSummaries || previousSummaries.length === 0) return null;
 
     const previous = previousSummaries.find(p =>
@@ -83,7 +79,6 @@ const SkillList: React.FC<SkillListProps> = ({ data, allSkills = [], userAnswers
     }
 
     const diff = currentCount - previousCount;
-    console.log('Diff calculated:', current.item, level, 'current:', currentCount, 'previous:', previousCount, 'diff:', diff);
     return diff !== 0 ? diff : null;
   };
 

@@ -169,7 +169,6 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
 
   // 前回の集計結果を取得する
   const getPreviousSummaries = (): SkillSummary[] | undefined => {
-    console.log('getPreviousSummaries: assessmentHistory length:', assessmentHistory.length);
     if (assessmentHistory.length < 2) return undefined; // 2回以上の評価が必要
     
     // 日付でソートして2番目に新しい履歴（前回の結果）を取得
@@ -177,7 +176,6 @@ export const SkillProvider: React.FC<SkillProviderProps> = ({ children }) => {
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
     
-    console.log('getPreviousSummaries: returning previous results:', sortedHistory[1].results.length);
     return sortedHistory[1].results; // インデックス1が前回の結果
   };
 

@@ -45,11 +45,9 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ onRestart, historyData }) =
       
       // 表示中の履歴のインデックスを見つける
       const currentIndex = sortedHistory.findIndex(h => h.date === historyData.date);
-      console.log('履歴表示時: currentIndex:', currentIndex, 'total:', sortedHistory.length);
       
       if (currentIndex >= 0 && currentIndex < sortedHistory.length - 1) {
         // 次のインデックス（より古い履歴）を前回として使用
-        console.log('履歴表示時の前回結果:', sortedHistory[currentIndex + 1].results.length);
         return sortedHistory[currentIndex + 1].results;
       }
       return undefined;
@@ -58,7 +56,6 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ onRestart, historyData }) =
       return getPreviousSummaries();
     }
   })();
-  console.log('ResultScreen: previousSummaries length:', previousSummaries?.length || 0);
 
   // 評価完了時の自動保存（重複保存防止強化）
   useEffect(() => {
