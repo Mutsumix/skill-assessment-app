@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -16,6 +15,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.mutsumix.skillassessment",
       "buildNumber": "7",
+      "newArchEnabled": false,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -27,7 +27,8 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.mutsumix.skillassessment",
-      "versionCode": 7
+      "versionCode": 7,
+      "newArchEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
