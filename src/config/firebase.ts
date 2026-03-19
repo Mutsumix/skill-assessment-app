@@ -4,14 +4,17 @@ import { initializeAuth } from "firebase/auth";
 import { getReactNativePersistence } from "@firebase/auth/dist/rn/index.js";
 import { getFirestore } from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
+
+const extra = Constants.expoConfig?.extra || {};
 
 const firebaseConfig = {
-  apiKey: "REDACTED",
-  authDomain: "skill-map-8446f.firebaseapp.com",
-  projectId: "skill-map-8446f",
-  storageBucket: "skill-map-8446f.firebasestorage.app",
-  messagingSenderId: "19563136471",
-  appId: "1:19563136471:web:608b4078cdbcbd076a7792",
+  apiKey: extra.firebaseApiKey || "",
+  authDomain: extra.firebaseAuthDomain || "",
+  projectId: extra.firebaseProjectId || "",
+  storageBucket: extra.firebaseStorageBucket || "",
+  messagingSenderId: extra.firebaseMessagingSenderId || "",
+  appId: extra.firebaseAppId || "",
 };
 
 const app = initializeApp(firebaseConfig);
