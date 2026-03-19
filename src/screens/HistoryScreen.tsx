@@ -22,12 +22,6 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack, onViewResult }) =
     (a, b) => b.date.getTime() - a.date.getTime()
   );
 
-  // 詳細表示
-  const handleViewDetail = (history: AssessmentHistory) => {
-    onViewResult(history);
-  };
-
-  // 個別の履歴削除
   const handleDeleteHistory = (history: AssessmentHistory) => {
     Alert.alert(
       "履歴の削除",
@@ -50,71 +44,53 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack, onViewResult }) =
     );
   };
 
-  // 成長率を計算
-  const calculateGrowthRate = (current: AssessmentHistory, previous?: AssessmentHistory) => {
-    if (!previous) return null;
-
-    const currentTotal = current.skillCounts.beginnerAcquired +
-                        current.skillCounts.intermediateAcquired +
-                        current.skillCounts.advancedAcquired;
-    const previousTotal = previous.skillCounts.beginnerAcquired +
-                         previous.skillCounts.intermediateAcquired +
-                         previous.skillCounts.advancedAcquired;
-
-    const growth = currentTotal - previousTotal;
-    return growth;
+  // 平均レベルを計算
+  const calculateAverageLevel = (history: AssessmentHistory): string => {
+    const answeredResults = history.results.filter(r => r.level >= 0);
+    if (answeredResults.length === 0) return "-";
+    const avg = answeredResults.reduce((sum, r) => sum + r.level, 0) / answeredResults.length;
+    return avg.toFixed(1);
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={[styles.content, { paddingTop: insets.top + theme.spacing.sm }]}>
         <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <Typography variant="h4" style={styles.title}>
-            評価履歴
+          <View style={styles.headerRow}>
+            <Typography variant="h4" style={styles.title}>
+              評価履歴
+            </Typography>
+            <Button
+              title="戻る"
+              onPress={onBack}
+              variant="outline"
+              style={styles.backButton}
+              size="small"
+            />
+          </View>
+          <Typography variant="body1" style={styles.subtitle}>
+            過去の評価結果を確認できます
           </Typography>
-          <Button
-            title="戻る"
-            onPress={onBack}
-            variant="outline"
-            style={styles.backButton}
-            size="small"
-          />
         </View>
-        <Typography variant="body1" style={styles.subtitle}>
-          過去の評価結果を確認できます
-        </Typography>
-      </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollViewContent}
-        showsVerticalScrollIndicator={true}
-      >
-        {sortedHistory.length === 0 ? (
-          <Card variant="outlined" style={styles.emptyCard}>
-            <Typography variant="h6" align="center" style={styles.emptyTitle}>
-              📋 履歴がありません
-            </Typography>
-            <Typography variant="body2" align="center" style={styles.emptyText}>
-              まだ評価を完了していません。
-              最初の評価を完了すると、ここに履歴が表示されます。
-            </Typography>
-          </Card>
-        ) : (
-          <View style={styles.historyList}>
-            {sortedHistory.map((history, index) => {
-              const previousHistory = index < sortedHistory.length - 1 ? sortedHistory[index + 1] : undefined;
-              const growth = calculateGrowthRate(history, previousHistory);
-
-              const totalAcquired = history.skillCounts.beginnerAcquired +
-                                   history.skillCounts.intermediateAcquired +
-                                   history.skillCounts.advancedAcquired;
-              const totalSkills = history.skillCounts.beginnerTotal +
-                                 history.skillCounts.intermediateTotal +
-                                 history.skillCounts.advancedTotal;
-
-              return (
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollViewContent}
+          showsVerticalScrollIndicator={true}
+        >
+          {sortedHistory.length === 0 ? (
+            <Card variant="outlined" style={styles.emptyCard}>
+              <Typography variant="h6" align="center" style={styles.emptyTitle}>
+                履歴がありません
+              </Typography>
+              <Typography variant="body2" align="center" style={styles.emptyText}>
+                まだ評価を完了していません。
+                最初の評価を完了すると、ここに履歴が表示されます。
+              </Typography>
+            </Card>
+          ) : (
+            <View style={styles.historyList}>
+              {sortedHistory.map((history, index) => (
                 <Card key={history.id} variant="elevated" style={styles.historyCard}>
                   <View style={styles.cardHeader}>
                     <View style={styles.cardHeaderLeft}>
@@ -142,66 +118,23 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack, onViewResult }) =
                   </View>
 
                   <View style={styles.statsContainer}>
-                    <View style={styles.statRow}>
+                    <Typography variant="body1" style={styles.roleName}>
+                      {history.role}（{history.totalSkills}項目）
+                    </Typography>
+                    <View style={styles.averageContainer}>
                       <Typography variant="body2" style={styles.statLabel}>
-                        総合スキル取得率:
+                        平均レベル：
                       </Typography>
                       <Typography variant="h6" style={styles.statValue}>
-                        {Math.round((totalAcquired / totalSkills) * 100)}%
+                        {calculateAverageLevel(history)}
                       </Typography>
                     </View>
-
-                    <View style={styles.skillBreakdown}>
-                      <View style={styles.skillLevel}>
-                        <Typography variant="caption" style={styles.skillLevelLabel}>
-                          初級
-                        </Typography>
-                        <Typography variant="body2" style={styles.skillLevelValue}>
-                          {history.skillCounts.beginnerAcquired}/{history.skillCounts.beginnerTotal}
-                        </Typography>
-                      </View>
-                      <View style={styles.skillLevel}>
-                        <Typography variant="caption" style={styles.skillLevelLabel}>
-                          中級
-                        </Typography>
-                        <Typography variant="body2" style={styles.skillLevelValue}>
-                          {history.skillCounts.intermediateAcquired}/{history.skillCounts.intermediateTotal}
-                        </Typography>
-                      </View>
-                      <View style={styles.skillLevel}>
-                        <Typography variant="caption" style={styles.skillLevelLabel}>
-                          上級
-                        </Typography>
-                        <Typography variant="body2" style={styles.skillLevelValue}>
-                          {history.skillCounts.advancedAcquired}/{history.skillCounts.advancedTotal}
-                        </Typography>
-                      </View>
-                    </View>
-
-                    {growth !== null && (
-                      <View style={styles.growthContainer}>
-                        <Typography variant="caption" style={styles.growthLabel}>
-                          前回からの成長:
-                        </Typography>
-                                                                        <Typography
-                          variant="body2"
-                          style={{
-                            ...styles.growthValue,
-                            color: growth > 0 ? theme.colors.accent.success :
-                                   growth < 0 ? theme.colors.accent.error :
-                                   theme.colors.gray[600]
-                          }}
-                        >
-                          {growth > 0 ? '+' : ''}{growth}スキル
-                        </Typography>
-                      </View>
-                    )}
                   </View>
 
                   <View style={styles.buttonRow}>
                     <Button
                       title="詳細を見る"
-                      onPress={() => handleViewDetail(history)}
+                      onPress={() => onViewResult(history)}
                       variant="outline"
                       style={styles.detailButton}
                       size="small"
@@ -215,11 +148,10 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({ onBack, onViewResult }) =
                     />
                   </View>
                 </Card>
-              );
-            })}
-          </View>
-        )}
-      </ScrollView>
+              ))}
+            </View>
+          )}
+        </ScrollView>
       </View>
     </SafeAreaView>
   );
@@ -308,46 +240,19 @@ const styles = StyleSheet.create({
   statsContainer: {
     marginBottom: theme.spacing.md,
   },
-  statRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  roleName: {
+    fontWeight: "600",
     marginBottom: theme.spacing.sm,
+  },
+  averageContainer: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   statLabel: {
     color: theme.colors.gray[600],
   },
   statValue: {
     color: theme.colors.primary.main,
-    fontWeight: "bold",
-  },
-  skillBreakdown: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginBottom: theme.spacing.sm,
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.gray[50],
-    borderRadius: theme.borderRadius.sm,
-  },
-  skillLevel: {
-    alignItems: "center",
-  },
-  skillLevelLabel: {
-    color: theme.colors.gray[500],
-    marginBottom: theme.spacing.xs,
-  },
-  skillLevelValue: {
-    fontWeight: "bold",
-  },
-  growthContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  growthLabel: {
-    color: theme.colors.gray[600],
-  },
-  growthValue: {
     fontWeight: "bold",
   },
   buttonRow: {
