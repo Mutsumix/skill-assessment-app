@@ -17,20 +17,33 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess }) => 
   const insets = useSafeAreaInsets();
 
   const [isSignup, setIsSignup] = useState(false);
+  const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [localError, setLocalError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
+    setLocalError(null);
+
+    if (isSignup && !displayName.trim()) {
+      setLocalError("名前を入力してください");
+      return;
+    }
     if (!email.trim() || !password.trim()) {
-      Alert.alert("入力エラー", "メールアドレスとパスワードを入力してください");
+      setLocalError("メールアドレスとパスワードを入力してください");
+      return;
+    }
+    if (isSignup && password !== passwordConfirm) {
+      setLocalError("パスワードが一致しません");
       return;
     }
 
     setIsSubmitting(true);
     try {
       if (isSignup) {
-        await signup(email.trim(), password);
+        await signup(email.trim(), password, displayName.trim());
       } else {
         await login(email.trim(), password);
       }
@@ -44,8 +57,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess }) => 
 
   const toggleMode = () => {
     setIsSignup(!isSignup);
+    setLocalError(null);
     clearAuthError();
   };
+
+  const displayError = localError || authError;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -63,13 +79,30 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess }) => 
             </Typography>
             <Typography variant="body2" align="center" style={styles.subtitle}>
               {isSignup
-                ? "メールアドレスとパスワードで登録"
+                ? "名前・メールアドレス・パスワードで登録"
                 : "ログインすると評価結果がクラウドに保存されます"
               }
             </Typography>
           </View>
 
           <Card variant="elevated" style={styles.formCard}>
+            {isSignup && (
+              <>
+                <Typography variant="body2" style={styles.inputLabel}>
+                  名前
+                </Typography>
+                <TextInput
+                  style={styles.input}
+                  placeholder="山田 太郎"
+                  placeholderTextColor={theme.colors.gray[400]}
+                  value={displayName}
+                  onChangeText={(text) => { setDisplayName(text); setLocalError(null); }}
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                />
+              </>
+            )}
+
             <Typography variant="body2" style={styles.inputLabel}>
               メールアドレス
             </Typography>
@@ -78,7 +111,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess }) => 
               placeholder="example@company.co.jp"
               placeholderTextColor={theme.colors.gray[400]}
               value={email}
-              onChangeText={(text) => { setEmail(text); clearAuthError(); }}
+              onChangeText={(text) => { setEmail(text); setLocalError(null); clearAuthError(); }}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
@@ -92,13 +125,29 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLoginSuccess }) => 
               placeholder="6文字以上"
               placeholderTextColor={theme.colors.gray[400]}
               value={password}
-              onChangeText={(text) => { setPassword(text); clearAuthError(); }}
+              onChangeText={(text) => { setPassword(text); setLocalError(null); clearAuthError(); }}
               secureTextEntry
             />
 
-            {authError && (
+            {isSignup && (
+              <>
+                <Typography variant="body2" style={styles.inputLabel}>
+                  パスワード（確認）
+                </Typography>
+                <TextInput
+                  style={styles.input}
+                  placeholder="もう一度入力"
+                  placeholderTextColor={theme.colors.gray[400]}
+                  value={passwordConfirm}
+                  onChangeText={(text) => { setPasswordConfirm(text); setLocalError(null); }}
+                  secureTextEntry
+                />
+              </>
+            )}
+
+            {displayError && (
               <Typography variant="body2" style={styles.errorText}>
-                {authError}
+                {displayError}
               </Typography>
             )}
 

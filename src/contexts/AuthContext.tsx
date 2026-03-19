@@ -5,8 +5,10 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
+  updateProfile,
 } from "firebase/auth";
 import { auth } from "../config/firebase";
+import { FirestoreUserManager } from "../utils/firestoreManager";
 
 interface AuthContextType {
   user: User | null;
@@ -14,7 +16,7 @@ interface AuthContextType {
   isAuthLoading: boolean;
   authError: string | null;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
   clearAuthError: () => void;
 }
@@ -58,10 +60,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const signup = async (email: string, password: string) => {
+  const signup = async (email: string, password: string, displayName: string) => {
     try {
       setAuthError(null);
-      await createUserWithEmailAndPassword(auth, email, password);
+      const credential = await createUserWithEmailAndPassword(auth, email, password);
+
+      // Firebase Auth のプロフィールに名前を設定
+      await updateProfile(credential.user, { displayName });
+
+      // Firestore にユーザー情報を保存
+      await FirestoreUserManager.createOrUpdate(credential.user.uid, {
+        email,
+        displayName,
+      });
     } catch (error: any) {
       const message = getErrorMessage(error.code);
       setAuthError(message);
