@@ -1,12 +1,11 @@
-import React, { useState } from "react";
-import { View, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
+import React from "react";
+import { View, StyleSheet, ScrollView } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Typography from "../components/Typography";
 import Button from "../components/Button";
 import Card from "../components/Card";
 import theme from "../styles/theme";
 import { ROLE_DESCRIPTIONS, LEVEL_DEFINITIONS } from "../types";
-import { useSkillContext } from "../contexts/SkillContext";
 
 interface PreCheckScreenProps {
   role: string;
@@ -15,17 +14,8 @@ interface PreCheckScreenProps {
 }
 
 const PreCheckScreen: React.FC<PreCheckScreenProps> = ({ role, onStart, onBack }) => {
-  const [selectedLevel, setSelectedLevel] = useState<number | null>(null);
-  const { setInitialLevel } = useSkillContext();
   const insets = useSafeAreaInsets();
   const description = ROLE_DESCRIPTIONS[role];
-
-  const handleStart = () => {
-    if (selectedLevel !== null) {
-      setInitialLevel(selectedLevel);
-      onStart();
-    }
-  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -58,47 +48,29 @@ const PreCheckScreen: React.FC<PreCheckScreenProps> = ({ role, onStart, onBack }
 
           <View style={styles.levelSection}>
             <Typography variant="h6" style={styles.levelLabel}>
-              最も近い習熟度を選択してください
+              レベルの目安
             </Typography>
 
-            {LEVEL_DEFINITIONS.map((def) => {
-              const isSelected = selectedLevel === def.level;
-              return (
-                <TouchableOpacity
-                  key={def.level}
-                  style={[
-                    styles.levelOption,
-                    isSelected && styles.levelOptionSelected,
-                  ]}
-                  onPress={() => setSelectedLevel(def.level)}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.radio, isSelected && styles.radioSelected]}>
-                    {isSelected && <View style={styles.radioInner} />}
-                  </View>
-                  <View style={styles.levelTextContainer}>
-                    <Typography
-                      variant="body1"
-                      style={isSelected ? {...styles.levelTitle, ...styles.levelTitleSelected} : styles.levelTitle}
-                    >
-                      {def.label}
-                    </Typography>
-                    <Typography variant="body2" style={styles.levelDescription}>
-                      {def.description}
-                    </Typography>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
+            {LEVEL_DEFINITIONS.map((def) => (
+              <View key={def.level} style={styles.levelRow}>
+                <View style={styles.levelBadge}>
+                  <Typography variant="body2" style={styles.levelBadgeText}>
+                    {def.level}
+                  </Typography>
+                </View>
+                <Typography variant="body2" style={styles.levelDescription}>
+                  {def.description}
+                </Typography>
+              </View>
+            ))}
           </View>
         </ScrollView>
 
         <View style={styles.footer}>
           <Button
             title="チェックを開始"
-            onPress={handleStart}
+            onPress={onStart}
             variant="primary"
-            disabled={selectedLevel === null}
             style={styles.startButton}
           />
         </View>
@@ -154,51 +126,29 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
     paddingHorizontal: theme.spacing.xs,
   },
-  levelOption: {
+  levelRow: {
     flexDirection: "row",
     alignItems: "center",
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.gray[200],
-    backgroundColor: theme.colors.common.surface,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.sm,
   },
-  levelOptionSelected: {
-    borderColor: theme.colors.primary.main,
-    backgroundColor: `${theme.colors.primary.main}08`,
-  },
-  radio: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: theme.colors.gray[400],
+  levelBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.colors.gray[200],
     justifyContent: "center",
     alignItems: "center",
     marginRight: theme.spacing.md,
   },
-  radioSelected: {
-    borderColor: theme.colors.primary.main,
-  },
-  radioInner: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: theme.colors.primary.main,
-  },
-  levelTextContainer: {
-    flex: 1,
-  },
-  levelTitle: {
-    fontWeight: "600",
-    marginBottom: 2,
-  },
-  levelTitleSelected: {
-    color: theme.colors.primary.main,
+  levelBadgeText: {
+    fontWeight: "bold",
+    color: theme.colors.gray[600],
+    fontSize: 13,
   },
   levelDescription: {
-    color: theme.colors.gray[600],
+    flex: 1,
+    color: theme.colors.gray[700],
   },
   footer: {
     paddingTop: theme.spacing.md,
