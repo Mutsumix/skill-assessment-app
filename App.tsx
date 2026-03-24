@@ -2,46 +2,42 @@ import React, { useState, useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet, View, ActivityIndicator } from "react-native";
 import { SkillProvider, useSkillContext } from "./src/contexts/SkillContext";
-import { BreakProvider } from "./src/contexts/BreakContext";
+import { AuthProvider } from "./src/contexts/AuthContext";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import SplashScreen from "./src/screens/SplashScreen";
 import HomeScreen from "./src/screens/HomeScreen";
-import InstructionScreen from "./src/screens/InstructionScreen";
+import LoginScreen from "./src/screens/LoginScreen";
+import RoleSelectionScreen from "./src/screens/RoleSelectionScreen";
+import PreCheckScreen from "./src/screens/PreCheckScreen";
 import AssessmentScreen from "./src/screens/AssessmentScreen";
 import ResultScreen from "./src/screens/ResultScreen";
 import HistoryScreen from "./src/screens/HistoryScreen";
-import AssessmentModeSelectionScreen from "./src/screens/AssessmentModeSelectionScreen";
-import DomainSelectionScreen from "./src/screens/DomainSelectionScreen";
 import theme from "./src/styles/theme";
 import { AssessmentHistory } from "./src/types";
 import { FirstLaunchManager } from "./src/utils/storageManager";
 
-// アプリの画面
 enum AppScreen {
   SPLASH,
   HOME,
-  MODE_SELECTION,
-  DOMAIN_SELECTION,
-  INSTRUCTION,
+  LOGIN,
+  ROLE_SELECTION,
+  PRE_CHECK,
   ASSESSMENT,
   RESULT,
+  RESULT_DETAIL,
   HISTORY,
   HISTORY_DETAIL,
 }
 
-// 内部コンポーネントを分離してSkillContextを使用可能にする
 function AppContent() {
   const [currentScreen, setCurrentScreen] = useState<AppScreen>(AppScreen.SPLASH);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedHistory, setSelectedHistory] = useState<AssessmentHistory | null>(null);
-  const { resetAssessment, startFullAssessment, startPartialAssessment } = useSkillContext();
+  const { resetAssessment, startRoleAssessment, selectedRole, roleSkills, userAnswers } = useSkillContext();
 
-  // アプリの初期化
   useEffect(() => {
-    // 実際のアプリでは、ここでデータの読み込みなどの初期化処理を行う
     const initializeApp = async () => {
       try {
-        // 初期化処理（例：データの読み込み）
         await new Promise((resolve) => setTimeout(resolve, 1000));
         setIsLoading(false);
       } catch (error) {
@@ -53,82 +49,89 @@ function AppContent() {
     initializeApp();
   }, []);
 
-  // スプラッシュ画面の完了時
+  // スプラッシュ完了
   const handleSplashComplete = async () => {
-    // 初回起動かどうかをチェック
     const isFirstLaunch = await FirstLaunchManager.isFirstLaunch();
-
     if (isFirstLaunch) {
-      setCurrentScreen(AppScreen.INSTRUCTION);
-    } else {
-      setCurrentScreen(AppScreen.HOME);
+      await FirstLaunchManager.markLaunchComplete();
     }
+    setCurrentScreen(AppScreen.HOME);
   };
 
-  // ホーム画面から新規評価開始
+  // ホーム → ログイン
+  const handleLogin = () => {
+    setCurrentScreen(AppScreen.LOGIN);
+  };
+
+  // ログイン成功 or 戻る → ホーム
+  const handleLoginBack = () => {
+    setCurrentScreen(AppScreen.HOME);
+  };
+
+  // ホーム → ロール選択
   const handleStartNew = async () => {
-    await resetAssessment(); // 既存のデータをクリア
-    setCurrentScreen(AppScreen.MODE_SELECTION);
+    await resetAssessment();
+    setCurrentScreen(AppScreen.ROLE_SELECTION);
   };
 
-  // ホーム画面から進捗再開
+  // ホーム → 進捗再開
   const handleResumeProgress = () => {
     setCurrentScreen(AppScreen.ASSESSMENT);
   };
 
-  // ホーム画面から履歴表示
+  // ホーム → 履歴
   const handleViewHistory = () => {
     setCurrentScreen(AppScreen.HISTORY);
   };
 
-  // モード選択画面のハンドラー
-  const handleSelectFullAssessment = () => {
-    startFullAssessment();
-    setCurrentScreen(AppScreen.INSTRUCTION);
+  // ロール選択 → PreCheck
+  const handleSelectRole = (role: string) => {
+    startRoleAssessment(role);
+    setCurrentScreen(AppScreen.PRE_CHECK);
   };
 
-  const handleSelectDomainAssessment = () => {
-    setCurrentScreen(AppScreen.DOMAIN_SELECTION);
-  };
-
-  const handleModeSelectionBack = () => {
+  // ロール選択 → ホーム
+  const handleRoleSelectionBack = () => {
     setCurrentScreen(AppScreen.HOME);
   };
 
-  // 分野選択画面のハンドラー
-  const handleSelectDomain = (domain: string) => {
-    startPartialAssessment(domain);
-    // 分野別チェック時はインストラクション画面をスキップ
+  // PreCheck → 評価開始
+  const handlePreCheckStart = () => {
     setCurrentScreen(AppScreen.ASSESSMENT);
   };
 
-  const handleDomainSelectionBack = () => {
-    setCurrentScreen(AppScreen.MODE_SELECTION);
+  // PreCheck → ロール選択に戻る
+  const handlePreCheckBack = () => {
+    setCurrentScreen(AppScreen.ROLE_SELECTION);
   };
 
-  // 説明画面の完了時
-  const handleInstructionComplete = async () => {
-    // 初回起動完了をマーク
-    await FirstLaunchManager.markLaunchComplete();
-    setCurrentScreen(AppScreen.ASSESSMENT);
-  };
-
-  // 評価画面の完了時
+  // 評価完了 → 結果
   const handleAssessmentComplete = () => {
     setCurrentScreen(AppScreen.RESULT);
   };
 
-  // 評価画面からホームに戻る
+  // → ホーム
   const handleBackToHome = () => {
     setCurrentScreen(AppScreen.HOME);
   };
 
-  // 結果画面からホームに戻る
-  const handleResultToHome = () => {
-    setCurrentScreen(AppScreen.HOME);
+  // 結果 → ロール選択
+  const handleGoToRoleSelection = async () => {
+    await resetAssessment();
+    setCurrentScreen(AppScreen.ROLE_SELECTION);
   };
 
-  // 履歴画面から戻る
+  // 結果 → 項目詳細（閲覧モード）
+  const handleViewDetail = () => {
+    setCurrentScreen(AppScreen.RESULT_DETAIL);
+  };
+
+  // 閲覧モード → 結果に戻る
+  const handleResultDetailBack = () => {
+    setCurrentScreen(AppScreen.RESULT);
+  };
+
+  // 履歴 → ホーム
   const handleHistoryBack = () => {
     setCurrentScreen(AppScreen.HOME);
   };
@@ -136,7 +139,21 @@ function AppContent() {
   // 履歴詳細表示
   const handleViewHistoryDetail = (history: AssessmentHistory) => {
     setSelectedHistory(history);
+    // 履歴の結果表示用にロールのスキルを設定
+    startRoleAssessment(history.role);
     setCurrentScreen(AppScreen.HISTORY_DETAIL);
+  };
+
+  // 履歴詳細 → 項目詳細（閲覧モード）
+  const handleHistoryViewDetail = () => {
+    setCurrentScreen(AppScreen.RESULT_DETAIL);
+  };
+
+  // 履歴詳細の「他のロールをチェックする」
+  const handleHistoryGoToRoleSelection = async () => {
+    setSelectedHistory(null);
+    await resetAssessment();
+    setCurrentScreen(AppScreen.ROLE_SELECTION);
   };
 
   // 履歴詳細から戻る
@@ -145,7 +162,6 @@ function AppContent() {
     setCurrentScreen(AppScreen.HISTORY);
   };
 
-  // 読み込み中の表示
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -154,7 +170,6 @@ function AppContent() {
     );
   }
 
-  // 現在の画面を表示
   const renderScreen = () => {
     switch (currentScreen) {
       case AppScreen.SPLASH:
@@ -165,25 +180,31 @@ function AppContent() {
             onStartNew={handleStartNew}
             onResumeProgress={handleResumeProgress}
             onViewHistory={handleViewHistory}
+            onLogin={handleLogin}
           />
         );
-      case AppScreen.MODE_SELECTION:
+      case AppScreen.LOGIN:
         return (
-          <AssessmentModeSelectionScreen
-            onSelectFullAssessment={handleSelectFullAssessment}
-            onSelectDomainAssessment={handleSelectDomainAssessment}
-            onBack={handleModeSelectionBack}
+          <LoginScreen
+            onBack={handleLoginBack}
+            onLoginSuccess={handleLoginBack}
           />
         );
-      case AppScreen.DOMAIN_SELECTION:
+      case AppScreen.ROLE_SELECTION:
         return (
-          <DomainSelectionScreen
-            onSelectDomain={handleSelectDomain}
-            onBack={handleDomainSelectionBack}
+          <RoleSelectionScreen
+            onSelectRole={handleSelectRole}
+            onBack={handleRoleSelectionBack}
           />
         );
-      case AppScreen.INSTRUCTION:
-        return <InstructionScreen onStart={handleInstructionComplete} />;
+      case AppScreen.PRE_CHECK:
+        return (
+          <PreCheckScreen
+            role={selectedRole || ""}
+            onStart={handlePreCheckStart}
+            onBack={handlePreCheckBack}
+          />
+        );
       case AppScreen.ASSESSMENT:
         return (
           <AssessmentScreen
@@ -192,7 +213,22 @@ function AppContent() {
           />
         );
       case AppScreen.RESULT:
-        return <ResultScreen onRestart={handleResultToHome} />;
+        return (
+          <ResultScreen
+            onGoToRoleSelection={handleGoToRoleSelection}
+            onBackToHome={handleBackToHome}
+            onViewDetail={handleViewDetail}
+          />
+        );
+      case AppScreen.RESULT_DETAIL:
+        return (
+          <AssessmentScreen
+            onComplete={() => {}}
+            onBackToHome={selectedHistory ? handleHistoryDetailBack : handleResultDetailBack}
+            isViewMode={true}
+            viewModeAnswers={selectedHistory ? selectedHistory.userAnswers : userAnswers}
+          />
+        );
       case AppScreen.HISTORY:
         return (
           <HistoryScreen
@@ -203,7 +239,9 @@ function AppContent() {
       case AppScreen.HISTORY_DETAIL:
         return (
           <ResultScreen
-            onRestart={handleHistoryDetailBack}
+            onGoToRoleSelection={handleHistoryGoToRoleSelection}
+            onBackToHome={handleHistoryDetailBack}
+            onViewDetail={handleHistoryViewDetail}
             historyData={selectedHistory}
           />
         );
@@ -223,11 +261,11 @@ function AppContent() {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <SkillProvider>
-        <BreakProvider>
+      <AuthProvider>
+        <SkillProvider>
           <AppContent />
-        </BreakProvider>
-      </SkillProvider>
+        </SkillProvider>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

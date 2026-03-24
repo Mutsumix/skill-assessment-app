@@ -6,18 +6,21 @@ import Button from "../components/Button";
 import Card from "../components/Card";
 import theme from "../styles/theme";
 import { useSkillContext } from "../contexts/SkillContext";
+import { useAuth } from "../contexts/AuthContext";
 import { FEEDBACK_CONFIG } from "../config/feedback";
 
 interface HomeScreenProps {
   onStartNew: () => void;
   onResumeProgress: () => void;
   onViewHistory: () => void;
+  onLogin: () => void;
 }
 
 const HomeScreen: React.FC<HomeScreenProps> = ({
   onStartNew,
   onResumeProgress,
-  onViewHistory
+  onViewHistory,
+  onLogin,
 }) => {
   const {
     hasSavedProgress,
@@ -26,6 +29,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     loadAssessmentHistory
   } = useSkillContext();
 
+  const { user, isAuthenticated, logout } = useAuth();
   const insets = useSafeAreaInsets();
 
   // 画面初期化時にデータを読み込み
@@ -127,6 +131,31 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           </Typography>
         </View>
 
+        {/* 認証状態 */}
+        <View style={styles.authSection}>
+          {isAuthenticated ? (
+            <View style={styles.authLoggedIn}>
+              <Typography variant="caption" style={styles.authEmail}>
+                {user?.email}
+              </Typography>
+              <Button
+                title="ログアウト"
+                onPress={() => logout()}
+                variant="text"
+                size="small"
+              />
+            </View>
+          ) : (
+            <Button
+              title="ログイン"
+              onPress={onLogin}
+              variant="outline"
+              size="small"
+              style={styles.loginButton}
+            />
+          )}
+        </View>
+
         {/* メインコンテンツ - グリッド表示 */}
         <View style={styles.gridContainer}>
           {/* 上段 - 新規評価 */}
@@ -135,7 +164,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
               🚀 新しい評価を開始
             </Typography>
             <Typography variant="body2" style={styles.cardDescription}>
-                                128項目のスキル評価（約15-20分）
+              ロール別のスキルチェック
             </Typography>
             <Button
               title="評価を開始"
@@ -259,6 +288,21 @@ const styles = StyleSheet.create({
     color: theme.colors.gray[600],
     textAlign: "center",
     lineHeight: 24,
+  },
+  authSection: {
+    alignItems: "center",
+    marginBottom: theme.spacing.md,
+  },
+  authLoggedIn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.sm,
+  },
+  authEmail: {
+    color: theme.colors.gray[600],
+  },
+  loginButton: {
+    paddingHorizontal: theme.spacing.lg,
   },
   gridContainer: {
     flex: 1,

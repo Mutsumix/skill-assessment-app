@@ -3,8 +3,6 @@ import {
   AssessmentHistory,
   UserProfile,
   SavedProgress,
-  UserAnswer,
-  SkillSummary,
 } from "../types";
 
 // ストレージキー
@@ -66,11 +64,9 @@ export const AssessmentHistoryManager = {
     try {
       const profile = await UserProfileManager.load();
       if (profile) {
-        // 既存の履歴に追加
         profile.assessmentHistory.push(history);
         await UserProfileManager.save(profile);
       } else {
-        // 新しいプロフィールを作成
         const newProfile: UserProfile = {
           id: Date.now().toString(),
           assessmentHistory: [history],
@@ -98,10 +94,22 @@ export const AssessmentHistoryManager = {
       const histories = await this.getAll();
       if (histories.length === 0) return null;
 
-      // 日付でソートして最新を取得
       return histories.sort((a, b) => b.date.getTime() - a.date.getTime())[0];
     } catch (error) {
       console.error("最新の評価履歴の取得に失敗しました:", error);
+      return null;
+    }
+  },
+
+  async getLatestByRole(role: string): Promise<AssessmentHistory | null> {
+    try {
+      const histories = await this.getAll();
+      const roleHistories = histories.filter(h => h.role === role);
+      if (roleHistories.length === 0) return null;
+
+      return roleHistories.sort((a, b) => b.date.getTime() - a.date.getTime())[0];
+    } catch (error) {
+      console.error("ロール別最新履歴の取得に失敗しました:", error);
       return null;
     }
   },
@@ -155,7 +163,6 @@ export const ProgressManager = {
       if (!data) return null;
 
       const progress = JSON.parse(data);
-      // Date オブジェクトの復元
       progress.lastSavedDate = new Date(progress.lastSavedDate);
 
       return progress;
@@ -189,10 +196,10 @@ export const FirstLaunchManager = {
   async isFirstLaunch(): Promise<boolean> {
     try {
       const data = await AsyncStorage.getItem(STORAGE_KEYS.FIRST_LAUNCH);
-      return data === null; // データがなければ初回起動
+      return data === null;
     } catch (error) {
       console.error("初回起動フラグの確認に失敗しました:", error);
-      return true; // エラーの場合は安全のため初回として扱う
+      return true;
     }
   },
 
@@ -217,34 +224,6 @@ export const FirstLaunchManager = {
 
 // ユーティリティ関数
 export const StorageUtils = {
-  // 評価履歴から統計情報を計算
-  calculateProgressStats(histories: AssessmentHistory[]) {
-    if (histories.length === 0) return null;
-
-    const latest = histories[histories.length - 1];
-    const previous =
-      histories.length > 1 ? histories[histories.length - 2] : null;
-
-    return {
-      totalAssessments: histories.length,
-      latestCompletionRate: latest.completionRate,
-      latestSkillCounts: latest.skillCounts,
-      improvementSinceLastAssessment: previous
-        ? {
-            beginnerImprovement:
-              latest.skillCounts.beginnerAcquired -
-              previous.skillCounts.beginnerAcquired,
-            intermediateImprovement:
-              latest.skillCounts.intermediateAcquired -
-              previous.skillCounts.intermediateAcquired,
-            advancedImprovement:
-              latest.skillCounts.advancedAcquired -
-              previous.skillCounts.advancedAcquired,
-          }
-        : null,
-    };
-  },
-
   // 履歴をエクスポート用JSONに変換
   exportHistoryAsJSON(histories: AssessmentHistory[]): string {
     return JSON.stringify(histories, null, 2);

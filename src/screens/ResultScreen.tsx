@@ -1,192 +1,114 @@
-import React, { useEffect } from "react";
-import { View, StyleSheet, ScrollView, SafeAreaView, Share, Linking, Alert, Image, Clipboard } from "react-native";
-// import Clipboard from "expo-clipboard";
-import { captureRef } from "react-native-view-shot";
-import { Platform } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, StyleSheet, ScrollView, SafeAreaView } from "react-native";
 import Typography from "../components/Typography";
 import Button from "../components/Button";
-import RadarChart from "../components/RadarChart";
-import SkillList from "../components/SkillList";
-import DomainBarChart from "../components/DomainBarChart";
+import Card from "../components/Card";
 import theme from "../styles/theme";
 import { useSkillContext } from "../contexts/SkillContext";
-import { AssessmentHistory } from "../types";
+import { AssessmentHistory, SkillResult } from "../types";
 
 interface ResultScreenProps {
-  onRestart: () => void;
+  onGoToRoleSelection: () => void;
+  onBackToHome: () => void;
+  onViewDetail: () => void;
   historyData?: AssessmentHistory | null;
 }
 
-const ResultScreen: React.FC<ResultScreenProps> = ({ onRestart, historyData }) => {
+const ResultScreen: React.FC<ResultScreenProps> = ({
+  onGoToRoleSelection,
+  onBackToHome,
+  onViewDetail,
+  historyData,
+}) => {
   const {
-    summaries,
-    resetAssessment,
-    skills,
+    roleSkills,
     userAnswers,
     saveAssessmentResult,
     hasUnsavedResult,
     isSavingResult,
-    isPartialAssessment,
-    selectedDomain,
-    getPreviousSummaries,
-    assessmentHistory
+    selectedRole,
+    assessmentHistory,
   } = useSkillContext();
 
-  // 表示するデータを決定（履歴データがある場合はそちらを使用）
-  const displayData = historyData ? historyData.results : summaries;
-  const displayUserAnswers = historyData ? historyData.userAnswers : userAnswers;
-  // 前回のサマリーを取得
-  const previousSummaries = (() => {
-    if (historyData) {
-      // 履歴表示時：表示中の履歴より前の履歴を取得
-      const sortedHistory = [...assessmentHistory].sort((a, b) => 
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
-      
-      // 表示中の履歴のインデックスを見つける
-      const currentIndex = sortedHistory.findIndex(h => h.date === historyData.date);
-      
-      if (currentIndex >= 0 && currentIndex < sortedHistory.length - 1) {
-        // 次のインデックス（より古い履歴）を前回として使用
-        return sortedHistory[currentIndex + 1].results;
-      }
-      return undefined;
-    } else {
-      // 通常の結果表示時：最新の履歴の前の履歴を取得
-      return getPreviousSummaries();
-    }
-  })();
+  // 表示するデータを決定
+  const displayRole = historyData ? historyData.role : selectedRole;
+  const displayResults: SkillResult[] = historyData
+    ? historyData.results
+    : roleSkills.map(skill => ({
+        skillId: skill.id,
+        スキル名: skill.スキル名,
+        担当工程: skill.担当工程,
+        level: userAnswers.find(a => a.skillId === skill.id)?.level ?? -1,
+      }));
 
-  // 評価完了時の自動保存（重複保存防止強化）
+  // 前回データをマウント時に一度だけ計算（自動保存後の自己参照を防止）
+  const [previousResults] = useState<SkillResult[] | null>(() => {
+    if (!displayRole) return null;
+
+    const roleHistories = assessmentHistory
+      .filter(h => h.role === displayRole)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    if (historyData) {
+      // 履歴表示時：表示中の履歴より前の履歴
+      const currentIndex = roleHistories.findIndex(h => h.id === historyData.id);
+      if (currentIndex >= 0 && currentIndex < roleHistories.length - 1) {
+        return roleHistories[currentIndex + 1].results;
+      }
+      return null;
+    } else {
+      // 通常結果表示時：保存前の最新履歴
+      if (roleHistories.length > 0) {
+        return roleHistories[0].results;
+      }
+      return null;
+    }
+  });
+
+  // 評価完了時の自動保存
   useEffect(() => {
-    // 履歴表示モードでない場合のみ、新しい評価結果を自動保存
-    if (!historyData && hasUnsavedResult && !isSavingResult && summaries.length > 0) {
+    if (!historyData && hasUnsavedResult && !isSavingResult) {
       const autoSave = async () => {
         try {
           await saveAssessmentResult();
-          console.log('評価結果が自動保存されました');
         } catch (error) {
           console.error('自動保存に失敗しました:', error);
         }
       };
       autoSave();
     }
-  }, [historyData, hasUnsavedResult, isSavingResult, summaries.length, saveAssessmentResult]);
+  }, [historyData, hasUnsavedResult, isSavingResult, saveAssessmentResult]);
 
-  // レーダーチャート画像付きでX共有
-  const radarRef = React.useRef<View>(null);
-
-  // imgurアップロード関数
-  const uploadToImgur = async (base64: string): Promise<string | null> => {
-    try {
-      const response = await fetch("https://api.imgur.com/3/image", {
-        method: "POST",
-        headers: {
-          Authorization: "Client-ID 77b8e7e9bcc0a96",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          image: base64,
-          type: "base64",
-        }),
-      });
-      const json = await response.json();
-      if (json.success && json.data && json.data.link) {
-        return json.data.link;
-      }
-      return null;
-    } catch (e) {
-      console.error("imgur upload error", e);
-      return null;
+  // 担当工程でグループ化
+  const groupedResults: Record<string, SkillResult[]> = {};
+  displayResults.forEach(result => {
+    if (!groupedResults[result.担当工程]) {
+      groupedResults[result.担当工程] = [];
     }
-  };
+    groupedResults[result.担当工程].push(result);
+  });
 
-  // Xで共有（intent/post URL遷移＋imgur画像URL）
-  const handleShare = async () => {
-    try {
-      // レーダーチャート部分を画像としてキャプチャ（base64）
-      const base64 = await captureRef(radarRef, {
-        format: "png",
-        quality: 1,
-        result: "base64",
-      });
-
-      // imgurにアップロード
-      const imgurUrl = await uploadToImgur(base64);
-
-      // 投稿文
-      const tweetText = encodeURIComponent("技術マップでスキルチェックしたよ！");
-      // 画像URLを投稿に含める
-      const url = imgurUrl
-        ? `https://x.com/intent/post?text=${tweetText}&url=${encodeURIComponent(imgurUrl)}`
-        : `https://x.com/intent/post?text=${tweetText}`;
-
-      // Xアプリまたはブラウザで開く
-      const supported = await Linking.canOpenURL(url);
-      if (supported) {
-        Linking.openURL(url);
-      } else {
-        Alert.alert("エラー", "Xの投稿画面を開けませんでした。");
-      }
-    } catch (e) {
-      Alert.alert("エラー", "画像のアップロードまたは共有に失敗しました。");
-    }
-  };
-
-  // スプレッドシート用コピー
-  const handleCopySpreadsheet = async () => {
-    try {
-      // skillsの順番でTRUE/FALSEを出力
-      const answerMap: { [skillId: number]: boolean } = {};
-      displayUserAnswers.forEach((a) => {
-        answerMap[a.skillId] = a.hasSkill;
-      });
-
-      // スプレッドシートの形式に合わせる（D列にスキル名、E列に習得状況）
-      const lines = skills.map(
-        (s) => `${s.スキル}\t${answerMap[s.id] !== undefined ? (answerMap[s.id] ? "TRUE" : "FALSE") : "FALSE"}`
-      );
-
-      const text = lines.join("\n");
-      console.log("コピーするテキスト:", text); // デバッグ用
-
-      // クリップボードにコピー
-      Clipboard.setString(text);
-      Alert.alert("コピー完了", "スプレッドシート用データをクリップボードにコピーしました。");
-    } catch (e) {
-      console.error("クリップボードコピーエラー:", e);
-      Alert.alert("エラー", "データのコピーに失敗しました。");
-    }
-  };
-
-
-
-  // トップに戻る
-  const handleBackToHome = () => {
-    onRestart();
-  };
-
-  // 再評価
-  const handleRestart = async () => {
-    await resetAssessment();
-    onRestart();
-  };
+  // 前回データのマップ
+  const previousMap: Record<number, number> = {};
+  if (previousResults) {
+    previousResults.forEach(r => {
+      previousMap[r.skillId] = r.level;
+    });
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Typography variant="h4" align="center" style={styles.title}>
-          {isPartialAssessment && selectedDomain ? `${selectedDomain} 評価結果` : '評価結果'}
+          {displayRole} チェック結果
         </Typography>
-        <Typography variant="body1" align="center" style={styles.subtitle}>
-          {isPartialAssessment 
-            ? `${selectedDomain}分野のスキル習得状況の評価結果です`
-            : 'あなたのスキル習得状況の評価結果です'
-          }
-        </Typography>
-        {isPartialAssessment && (
-          <Typography variant="caption" align="center" style={styles.partialNote}>
-            ⚠️ この結果は履歴に保存されていません
+        {historyData && (
+          <Typography variant="body2" align="center" style={styles.dateText}>
+            {historyData.date.toLocaleDateString('ja-JP', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
           </Typography>
         )}
       </View>
@@ -195,57 +117,80 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ onRestart, historyData }) =
         style={styles.scrollView}
         contentContainerStyle={styles.scrollViewContent}
         showsVerticalScrollIndicator={true}
-        nestedScrollEnabled={true}
       >
-        {displayData && displayData.length > 0 ? (
-          <>
-            {/* 部分評価の場合は棒グラフ、全評価の場合はレーダーチャート */}
-            {isPartialAssessment && selectedDomain ? (
-              <DomainBarChart summaries={displayData} selectedDomain={selectedDomain} />
-            ) : (
-              <View ref={radarRef} collapsable={false}>
-                <RadarChart data={displayData} />
-              </View>
-            )}
-
-            {/* スキル一覧 */}
-            <SkillList 
-              data={displayData} 
-              allSkills={skills} 
-              userAnswers={displayUserAnswers}
-              previousSummaries={previousSummaries}
-            />
-          </>
-        ) : (
-          <View style={styles.emptyContainer}>
-            <Typography variant="h6" align="center" style={styles.emptyText}>
-              表示するデータがありません
+        {Object.entries(groupedResults).map(([process, results]) => (
+          <Card key={process} variant="elevated" style={styles.processCard}>
+            <Typography variant="h6" style={styles.processTitle}>
+              {process}
             </Typography>
-          </View>
-        )}
+
+            {/* テーブルヘッダー */}
+            <View style={styles.tableHeader}>
+              <Typography variant="caption" style={styles.skillNameHeader}>
+                スキル名
+              </Typography>
+              <Typography variant="caption" style={styles.levelHeader}>
+                前回
+              </Typography>
+              <Typography variant="caption" style={styles.levelHeader}>
+                今回
+              </Typography>
+            </View>
+
+            {/* テーブル行 */}
+            {results.map((result) => {
+              const prevLevel = previousMap[result.skillId];
+              const hasImproved = prevLevel !== undefined && prevLevel >= 0 && result.level > prevLevel;
+
+              return (
+                <View key={result.skillId} style={styles.tableRow}>
+                  <Typography variant="body2" style={styles.skillNameCell} numberOfLines={2}>
+                    {result.スキル名}
+                  </Typography>
+                  <Typography variant="body2" style={styles.levelCell}>
+                    {prevLevel !== undefined && prevLevel >= 0 ? prevLevel : "-"}
+                  </Typography>
+                  <View style={styles.currentLevelCell}>
+                    <Typography
+                      variant="body2"
+                      style={hasImproved ? {...styles.levelCellText, ...styles.improvedText} : styles.levelCellText}
+                    >
+                      {result.level >= 0 ? result.level : "-"}
+                    </Typography>
+                    {hasImproved && (
+                      <Typography variant="caption" style={styles.upArrow}>
+                        ↑
+                      </Typography>
+                    )}
+                  </View>
+                </View>
+              );
+            })}
+          </Card>
+        ))}
       </ScrollView>
 
       <View style={styles.footer}>
         <View style={styles.buttonRow}>
           <Button
-            title="結果をコピー"
-            onPress={handleCopySpreadsheet}
+            title="他のロールをチェックする"
+            onPress={onGoToRoleSelection}
             variant="outline"
             style={styles.button}
           />
+        </View>
+        <View style={styles.buttonRow}>
           <Button
-            title={historyData ? "戻る" : "再評価する"}
-            onPress={handleRestart}
+            title="項目詳細を確認"
+            onPress={onViewDetail}
             variant="secondary"
             style={styles.button}
           />
         </View>
-
-        {/* トップに戻るボタンを画面下部に配置 */}
         <View style={styles.homeButtonContainer}>
           <Button
             title="トップに戻る"
-            onPress={handleBackToHome}
+            onPress={onBackToHome}
             variant="primary"
             style={styles.homeButton}
           />
@@ -260,8 +205,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.common.background,
     padding: theme.spacing.md,
-    paddingTop: theme.spacing.xl, // OSのナビゲーションバーとかぶらないように上部のパディングを増やす
-    paddingBottom: theme.spacing.xl, // 下部のパディングも増やす
+    paddingTop: theme.spacing.xl,
+    paddingBottom: theme.spacing.xl,
   },
   header: {
     marginBottom: theme.spacing.lg,
@@ -269,46 +214,92 @@ const styles = StyleSheet.create({
   title: {
     marginBottom: theme.spacing.xs,
   },
-  subtitle: {
-    color: theme.colors.gray[600],
-  },
-  partialNote: {
-    color: theme.colors.warning.main,
-    marginTop: theme.spacing.sm,
-    fontWeight: "500",
+  dateText: {
+    color: theme.colors.gray[500],
   },
   scrollView: {
     flex: 1,
   },
   scrollViewContent: {
     paddingBottom: theme.spacing.xl,
+    gap: theme.spacing.md,
+  },
+  processCard: {
+    padding: theme.spacing.md,
+  },
+  processTitle: {
+    marginBottom: theme.spacing.sm,
+    backgroundColor: theme.colors.gray[100],
+    padding: theme.spacing.sm,
+    borderRadius: theme.borderRadius.sm,
+  },
+  tableHeader: {
+    flexDirection: "row",
+    paddingVertical: theme.spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.gray[300],
+    marginBottom: theme.spacing.xs,
+  },
+  skillNameHeader: {
+    flex: 1,
+    fontWeight: "bold",
+    color: theme.colors.gray[600],
+  },
+  levelHeader: {
+    width: 44,
+    textAlign: "center",
+    fontWeight: "bold",
+    color: theme.colors.gray[600],
+  },
+  tableRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: theme.spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.gray[100],
+  },
+  skillNameCell: {
+    flex: 1,
+    paddingRight: theme.spacing.xs,
+  },
+  levelCell: {
+    width: 44,
+    textAlign: "center",
+    color: theme.colors.gray[500],
+  },
+  currentLevelCell: {
+    width: 44,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  levelCellText: {
+    textAlign: "center",
+  },
+  improvedText: {
+    color: theme.colors.accent.success,
+    fontWeight: "bold",
+  },
+  upArrow: {
+    color: theme.colors.accent.success,
+    fontWeight: "bold",
+    marginLeft: 2,
+    fontSize: 11,
   },
   footer: {
-    marginTop: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
+    marginTop: theme.spacing.md,
+    paddingTop: theme.spacing.md,
     borderTopWidth: 1,
     borderTopColor: theme.colors.gray[200],
   },
   buttonRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
     marginBottom: theme.spacing.sm,
   },
   button: {
-    flex: 1,
     marginHorizontal: theme.spacing.xs,
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: theme.spacing.xl,
-  },
-  emptyText: {
-    color: theme.colors.gray[600],
-  },
   homeButtonContainer: {
-    marginTop: theme.spacing.md,
+    marginTop: theme.spacing.xs,
     paddingTop: theme.spacing.sm,
     borderTopWidth: 1,
     borderTopColor: theme.colors.gray[200],

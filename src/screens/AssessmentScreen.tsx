@@ -1,109 +1,79 @@
 import React, { useEffect, useState } from "react";
-import { View, StyleSheet, SafeAreaView, Alert } from "react-native";
+import { View, StyleSheet, SafeAreaView, Alert, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Typography from "../components/Typography";
 import Button from "../components/Button";
 import Card from "../components/Card";
-import BreakCard from "../components/BreakCard";
+import ProgressBar from "../components/ProgressBar";
 import theme from "../styles/theme";
 import { useSkillContext } from "../contexts/SkillContext";
-import { useBreakContext } from "../contexts/BreakContext";
+import { LEVEL_DEFINITIONS, UserAnswer } from "../types";
 
 interface AssessmentScreenProps {
   onComplete: () => void;
   onBackToHome: () => void;
+  isViewMode?: boolean;
+  viewModeAnswers?: UserAnswer[];
 }
 
-const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackToHome }) => {
+const AssessmentScreen: React.FC<AssessmentScreenProps> = ({
+  onComplete,
+  onBackToHome,
+  isViewMode = false,
+  viewModeAnswers,
+}) => {
   const {
-    skills,
-    filteredSkills,
+    roleSkills,
     currentSkillIndex,
     progress,
     answerSkill,
     nextSkill,
     prevSkill,
-    calculateSummaries,
     saveProgress,
-    hasSavedProgress,
     userAnswers,
     hasUnsavedResult,
     saveAssessmentResult,
-    isPartialAssessment,
-    selectedDomain,
+    selectedRole,
     getPreviousAnswer,
+    setInitialLevel: _setInitialLevel,
   } = useSkillContext();
 
-  // SafeAreaのinsets取得
   const insets = useSafeAreaInsets();
-
-  const {
-    breakCards,
-    currentBreakIndex,
-    showBreak,
-    setShowBreak,
-    nextBreak,
-    showBreakForField,
-  } = useBreakContext();
-
-  // 保存関連の状態管理
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
 
-  // 現在のスキル（部分評価時はfilteredSkillsを使用）
-  const currentSkills = isPartialAssessment ? filteredSkills : skills;
-  const currentSkill = currentSkills[currentSkillIndex];
-  
+  // 閲覧モード用のインデックス管理
+  const [viewIndex, setViewIndex] = useState(0);
+
+  const effectiveIndex = isViewMode ? viewIndex : currentSkillIndex;
+  const currentSkill = roleSkills[effectiveIndex];
+
+  // 現在のスキルの回答を取得
+  const currentAnswer = (() => {
+    if (isViewMode && viewModeAnswers) {
+      return viewModeAnswers.find(a => a.skillId === currentSkill?.id)?.level;
+    }
+    return currentSkill ? userAnswers.find(a => a.skillId === currentSkill.id)?.level : undefined;
+  })();
+
   // 前回の回答を取得
   const previousAnswer = currentSkill ? getPreviousAnswer(currentSkill.id) : undefined;
 
-  // スキルデータをログに出力
-  useEffect(() => {
-  }, [currentSkillIndex, currentSkill, previousAnswer]);
-
-  // 分野の変更を検出して休憩カードを表示（全評価時のみ）
-  useEffect(() => {
-    if (!isPartialAssessment && currentSkillIndex > 0 && currentSkillIndex < currentSkills.length && !showBreak) {
-      const prevSkill = currentSkills[currentSkillIndex - 1];
-      const currentSkillData = currentSkills[currentSkillIndex];
-
-      // 分野が変わったら休憩カードを表示（終了した分野の休憩カードを表示）
-      if (prevSkill.分野 !== currentSkillData.分野) {
-        showBreakForField(prevSkill.分野); // 終了した分野の休憩カードを表示
-      }
-    }
-  }, [currentSkillIndex, currentSkills, isPartialAssessment]);
-
   // 全てのスキルが評価されたら完了
   useEffect(() => {
-    if (currentSkillIndex >= currentSkills.length) {
-      calculateSummaries();
+    if (!isViewMode && currentSkillIndex >= roleSkills.length && roleSkills.length > 0) {
       onComplete();
     }
-  }, [currentSkillIndex, currentSkills.length, calculateSummaries, onComplete]);
+  }, [currentSkillIndex, roleSkills.length, isViewMode, onComplete]);
 
-  // スキルありの回答
-  const handleYes = () => {
-    if (currentSkill) {
-      answerSkill(currentSkill.id, true);
-      nextSkill();
-    }
+  // レベル選択ハンドラー
+  const handleLevelSelect = (level: number) => {
+    if (isViewMode || !currentSkill) return;
+    answerSkill(currentSkill.id, level);
+    nextSkill();
   };
 
-  // スキルなしの回答
-  const handleNo = () => {
-    if (currentSkill) {
-      answerSkill(currentSkill.id, false);
-      nextSkill();
-    }
-  };
-
-  // 休憩から続ける
-  const handleContinue = () => {
-    setShowBreak(false);
-  };
-
-  // 手動保存のハンドラー
+  // 手動保存
   const handleSaveProgress = async () => {
     if (userAnswers.length === 0) {
       Alert.alert("保存データなし", "まだ回答がありません。");
@@ -114,7 +84,7 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
     try {
       await saveProgress();
       setSaveMessage("保存完了!");
-      setTimeout(() => setSaveMessage(''), 2000); // 2秒後にメッセージを消す
+      setTimeout(() => setSaveMessage(''), 2000);
     } catch (error) {
       Alert.alert("エラー", "保存に失敗しました。");
     } finally {
@@ -124,17 +94,17 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
 
   // トップに戻る
   const handleBackToHome = () => {
-    // 評価完了後の結果画面から戻る場合は、結果を自動保存してからトップに戻る
-    if (currentSkillIndex >= skills.length && hasUnsavedResult) {
+    if (isViewMode) {
+      onBackToHome();
+      return;
+    }
+
+    if (currentSkillIndex >= roleSkills.length && hasUnsavedResult) {
       Alert.alert(
         "結果を保存しますか？",
         "評価が完了しました。結果を履歴に保存してトップに戻りますか？",
         [
-          {
-            text: "保存せずに戻る",
-            style: "destructive",
-            onPress: onBackToHome
-          },
+          { text: "保存せずに戻る", style: "destructive", onPress: onBackToHome },
           { text: "キャンセル", style: "cancel" },
           {
             text: "保存して戻る",
@@ -145,18 +115,12 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
           }
         ]
       );
-    }
-    // 評価途中で進捗がある場合の確認
-    else if (userAnswers.length > 0 && currentSkillIndex < currentSkills.length) {
+    } else if (userAnswers.length > 0 && currentSkillIndex < roleSkills.length) {
       Alert.alert(
         "途中の記録を保存しますか？",
         "評価の途中です。進捗を保存してトップに戻りますか？",
         [
-          {
-            text: "保存せずに戻る",
-            style: "destructive",
-            onPress: onBackToHome
-          },
+          { text: "保存せずに戻る", style: "destructive", onPress: onBackToHome },
           { text: "キャンセル", style: "cancel" },
           {
             text: "保存して戻る",
@@ -168,12 +132,18 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
         ]
       );
     } else {
-      // その他の場合（評価開始前、または既に保存済み）はそのまま戻る
       onBackToHome();
     }
   };
 
-  // 読み込み中または全てのスキルが評価された場合は何も表示しない
+  // 閲覧モードの前後移動
+  const handleViewPrev = () => {
+    if (viewIndex > 0) setViewIndex(viewIndex - 1);
+  };
+  const handleViewNext = () => {
+    if (viewIndex < roleSkills.length - 1) setViewIndex(viewIndex + 1);
+  };
+
   if (!currentSkill) {
     return null;
   }
@@ -184,33 +154,44 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
         <View style={styles.headerRow}>
           <View style={styles.titleContainer}>
             <Typography variant="h5" style={styles.title}>
-              {isPartialAssessment ? `${selectedDomain} 評価` : 'スキル評価'}
+              {selectedRole || "スキル評価"}
             </Typography>
-            {isPartialAssessment && (
-              <Typography variant="caption" style={styles.partialNote}>
-                ⚠️ 結果は履歴に保存されません
+            {isViewMode && (
+              <Typography variant="caption" style={styles.viewModeNote}>
+                閲覧モード
               </Typography>
             )}
           </View>
           <View style={styles.headerButtons}>
-            <Button
-              title={isSaving ? "保存中..." : "保存"}
-              onPress={handleSaveProgress}
-              variant="secondary"
-              style={styles.saveButton}
-              size="small"
-              disabled={isSaving || userAnswers.length === 0}
-            />
-            <Button
-              title="トップ"
-              onPress={handleBackToHome}
-              variant="outline"
-              style={styles.homeButton}
-              size="small"
-            />
+            {isViewMode ? (
+              <Button
+                title="戻る"
+                onPress={onBackToHome}
+                variant="outline"
+                size="small"
+                style={styles.homeButton}
+              />
+            ) : (
+              <>
+                <Button
+                  title={isSaving ? "保存中..." : "保存"}
+                  onPress={handleSaveProgress}
+                  variant="secondary"
+                  size="small"
+                  style={styles.saveButton}
+                  disabled={isSaving || userAnswers.length === 0}
+                />
+                <Button
+                  title="トップ"
+                  onPress={handleBackToHome}
+                  variant="outline"
+                  size="small"
+                  style={styles.homeButton}
+                />
+              </>
+            )}
           </View>
         </View>
-        {/* 保存メッセージ */}
         {saveMessage && (
           <View style={styles.saveMessageContainer}>
             <Typography variant="caption" style={styles.saveMessage}>
@@ -219,233 +200,108 @@ const AssessmentScreen: React.FC<AssessmentScreenProps> = ({ onComplete, onBackT
           </View>
         )}
 
-        {/* 進捗パーセンテージ表示 */}
+        {/* 進捗表示 */}
         <View style={styles.progressInfo}>
-          <Typography variant="h6" style={styles.progressText}>
-            {Math.round(progress)}%
-          </Typography>
-          <Typography variant="caption" style={styles.progressSubtext}>
-            進捗
+          <Typography variant="body2" style={styles.progressText}>
+            {effectiveIndex + 1}問目 / {roleSkills.length}問中
           </Typography>
         </View>
-
-        {/* 分野ごとの設問バランス可視化 */}
-        <View style={styles.categoryBarContainer}>
-          {(() => {
-            // 部分評価の場合は選択された分野のみ表示
-            if (isPartialAssessment) {
-              const progressRatio = currentSkillIndex / currentSkills.length;
-              return (
-                <View style={{ flexDirection: "row", alignItems: "center", width: "100%", marginTop: 8 }}>
-                  <View style={{ flex: 1, alignItems: "center" }}>
-                    <View
-                      style={{
-                        height: 8,
-                        width: "100%",
-                        backgroundColor: theme.colors.gray[300],
-                        borderRadius: 4,
-                        marginHorizontal: 2,
-                        overflow: "hidden",
-                      }}
-                    >
-                      <View
-                        style={{
-                          height: "100%",
-                          width: `${progressRatio * 100}%`,
-                          backgroundColor: theme.colors.primary.main,
-                          borderRadius: 4,
-                        }}
-                      />
-                    </View>
-                    <Typography
-                      variant="caption"
-                      style={{
-                        fontSize: 11,
-                        color: theme.colors.primary.main,
-                        marginTop: 2,
-                        textAlign: "center",
-                        fontWeight: "600",
-                      }}
-                      numberOfLines={1}
-                    >
-                      {selectedDomain}
-                    </Typography>
-                  </View>
-                </View>
-              );
-            }
-
-            // 全評価の場合は従来通りの表示
-            const fieldCounts: { [field: string]: number } = {};
-            currentSkills.forEach((s) => {
-              fieldCounts[s.分野] = (fieldCounts[s.分野] || 0) + 1;
-            });
-            const total = currentSkills.length;
-            const fieldOrder = [
-              "インフラエンジニア", 
-              "開発エンジニア（プログラマー）",
-              "開発エンジニア（SE）",
-              "マネジメント",
-            ];
-            // 現在の進捗位置を計算
-            let cumulativeCount = 0;
-            const fieldProgress = fieldOrder.map((field) => {
-              const count = fieldCounts[field] || 0;
-              const start = cumulativeCount;
-              const end = cumulativeCount + count;
-              cumulativeCount += count;
-              return { field, count, start, end };
-            });
-
-            return (
-              <View style={{ flexDirection: "row", alignItems: "center", width: "100%", marginTop: 8 }}>
-                {fieldProgress.map(({ field, count, start, end }, idx) => {
-                  // 現在の位置がこの分野内にあるかチェック
-                  const isCurrentField = currentSkillIndex >= start && currentSkillIndex < end;
-                  
-                  let fieldProgressRatio = 0;
-                  if (currentSkillIndex < start) {
-                    // まだこの分野に到達していない
-                    fieldProgressRatio = 0;
-                  } else if (isCurrentField) {
-                    // 現在の分野内での進捗を計算
-                    fieldProgressRatio = (currentSkillIndex - start) / count;
-                  } else if (currentSkillIndex >= end) {
-                    // この分野が完全に終了している
-                    fieldProgressRatio = 1;
-                  }
-
-                  return (
-                    <View key={field} style={{ flex: count, alignItems: "center" }}>
-                      <View
-                        style={{
-                          height: 8,
-                          width: "100%",
-                          backgroundColor: theme.colors.gray[300],
-                          borderRadius: 4,
-                          marginHorizontal: 2,
-                          overflow: "hidden",
-                        }}
-                      >
-                        <View
-                          style={{
-                            height: "100%",
-                            width: `${fieldProgressRatio * 100}%`,
-                            backgroundColor: theme.colors.primary.main,
-                            borderRadius: 4,
-                          }}
-                        />
-                      </View>
-                      <Typography
-                        variant="caption"
-                        style={{
-                          fontSize: 11,
-                          color: isCurrentField ? theme.colors.primary.main : theme.colors.gray[600],
-                          marginTop: 2,
-                          textAlign: "center",
-                          fontWeight: isCurrentField ? "600" : "normal",
-                        }}
-                        numberOfLines={1}
-                      >
-                        {field === "マネジメント"
-                          ? "MGR"
-                          : field === "開発エンジニア（SE）"
-                          ? "システムエンジニア"
-                          : field === "開発エンジニア（プログラマー）"
-                          ? "プログラマー"
-                          : field}
-                      </Typography>
-                    </View>
-                  );
-                })}
-              </View>
-            );
-          })()}
-        </View>
+        <ProgressBar
+          progress={isViewMode
+            ? ((viewIndex + 1) / roleSkills.length) * 100
+            : progress
+          }
+          height={6}
+        />
       </View>
 
       <View style={styles.content}>
-        {showBreak ? (
-          <BreakCard
-            breakCard={breakCards[currentBreakIndex]}
-            onContinue={handleContinue}
-          />
-        ) : (
-          <Card variant="elevated" style={styles.card}>
-            {/* 前回の回答表示 */}
-            {previousAnswer !== undefined && (
-              <View style={styles.previousAnswerContainer}>
-                <Typography variant="caption" style={styles.previousAnswerText}>
-                  前回：{previousAnswer ? 'はい' : 'いいえ'}
-                </Typography>
-              </View>
-            )}
-
-            <Typography variant="body2" color={theme.colors.gray[600]} style={styles.skillSubtitle}>
-              {`${currentSkill.分野 || "不明"} > ${currentSkill.項目 || "不明"} > ${currentSkill.レベル || "不明"}`}
-            </Typography>
-
-            <Typography variant="h4" style={styles.skillTitle}>
-              {currentSkill.スキル || "スキル名が取得できません"}
-            </Typography>
-
-            <View style={styles.divider} />
-
-            {currentSkill.解説 ? (
-              <Typography variant="body2" style={styles.description}>
-                {currentSkill.解説}
+        <Card variant="elevated" style={styles.card}>
+          {/* 戻るテキスト */}
+          {effectiveIndex > 0 && (
+            <View style={styles.backTextContainer}>
+              <Typography
+                variant="caption"
+                style={styles.backText}
+                onPress={isViewMode ? handleViewPrev : prevSkill}
+              >
+                戻る
               </Typography>
-            ) : (
-              <Typography variant="body2" style={styles.description}>
-                {`${currentSkill.スキル}のスキルを持っているかどうかを評価します。`}
-              </Typography>
-            )}
-
-            <Typography variant="body1" style={styles.question}>
-              このスキルを持っていますか？
-            </Typography>
-
-            {/* カード左上に戻るテキスト */}
-            {currentSkillIndex > 0 && (
-              <View style={styles.backTextContainer}>
-                <Typography
-                  variant="caption"
-                  style={styles.backText}
-                  onPress={prevSkill}
-                >
-                  戻る
-                </Typography>
-              </View>
-            )}
-            <View style={styles.buttonContainer}>
-              <Button
-                title="はい"
-                onPress={handleYes}
-                variant={previousAnswer === true ? "primary" : "outline"}
-                style={[
-                  styles.button,
-                  previousAnswer === true && { backgroundColor: theme.colors.primary.main }
-                ]}
-                textStyle={previousAnswer === true ? { color: theme.colors.common.white } : undefined}
-              />
-              <Button
-                title="いいえ"
-                onPress={handleNo}
-                variant={previousAnswer === false ? "primary" : "outline"}
-                style={[
-                  styles.button,
-                  previousAnswer === false && { backgroundColor: theme.colors.primary.main }
-                ]}
-                textStyle={previousAnswer === false ? { color: theme.colors.common.white } : undefined}
-              />
             </View>
-          </Card>
-        )}
+          )}
+
+          {/* 前回の回答表示（閲覧モードでは非表示） */}
+          {!isViewMode && previousAnswer !== undefined && previousAnswer >= 0 && (
+            <View style={styles.previousAnswerContainer}>
+              <Typography variant="caption" style={styles.previousAnswerText}>
+                前回：レベル{previousAnswer}
+              </Typography>
+            </View>
+          )}
+
+          <Typography variant="body2" color={theme.colors.gray[600]} style={styles.skillSubtitle}>
+            {currentSkill.担当工程} &gt; {currentSkill.スキル名}
+          </Typography>
+
+          <Typography variant="body1" style={styles.description}>
+            {currentSkill.説明}
+          </Typography>
+
+          <View style={styles.divider} />
+
+          {/* レベル選択ボタン */}
+          <View style={styles.levelContainer}>
+            {LEVEL_DEFINITIONS.map((def) => {
+              const isCurrentAnswer = currentAnswer === def.level;
+              return (
+                <TouchableOpacity
+                  key={def.level}
+                  style={[
+                    styles.levelOption,
+                    isCurrentAnswer && styles.levelOptionSelected,
+                    isViewMode && styles.levelOptionDisabled,
+                  ]}
+                  onPress={() => handleLevelSelect(def.level)}
+                  disabled={isViewMode}
+                  activeOpacity={isViewMode ? 1 : 0.7}
+                >
+                  <View style={[styles.levelBadge, isCurrentAnswer ? styles.levelBadgeSelected : undefined]}>
+                    <Typography
+                      variant="caption"
+                      style={isCurrentAnswer ? {...styles.levelBadgeText, ...styles.levelBadgeTextSelected} : styles.levelBadgeText}
+                    >
+                      {def.level}
+                    </Typography>
+                  </View>
+                  <Typography
+                    variant="body2"
+                    style={isCurrentAnswer ? {...styles.levelText, ...styles.levelTextSelected} : styles.levelText}
+                  >
+                    {def.description}
+                  </Typography>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* 閲覧モードの次へボタン */}
+          {isViewMode && viewIndex < roleSkills.length - 1 && (
+            <View style={styles.viewNextContainer}>
+              <Typography
+                variant="caption"
+                style={styles.viewNextText}
+                onPress={handleViewNext}
+              >
+                次へ
+              </Typography>
+            </View>
+          )}
+        </Card>
       </View>
 
       <View style={styles.footer}>
         <Typography variant="caption" color={theme.colors.gray[500]}>
-          {`${currentSkillIndex + 1} / ${currentSkills.length}`}
+          {effectiveIndex + 1} / {roleSkills.length}
         </Typography>
       </View>
     </SafeAreaView>
@@ -459,7 +315,7 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
   },
   header: {
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
   },
   headerRow: {
     flexDirection: "row",
@@ -493,18 +349,14 @@ const styles = StyleSheet.create({
     color: theme.colors.primary.main,
     fontWeight: "600",
   },
-  progressSubtext: {
-    color: theme.colors.gray[500],
-    marginTop: theme.spacing.xs,
-  },
   titleContainer: {
     flex: 1,
   },
   title: {
     marginBottom: 0,
   },
-  partialNote: {
-    color: theme.colors.warning.main,
+  viewModeNote: {
+    color: theme.colors.accent.info,
     marginTop: theme.spacing.xs,
     fontWeight: "500",
   },
@@ -519,9 +371,6 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
     maxWidth: 500,
   },
-  skillTitle: {
-    marginBottom: theme.spacing.xs,
-  },
   skillSubtitle: {
     marginTop: theme.spacing.lg,
     marginBottom: theme.spacing.md,
@@ -531,9 +380,9 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.gray[200],
     marginVertical: theme.spacing.md,
   },
-  question: {
-    marginBottom: theme.spacing.lg,
-    textAlign: "center",
+  description: {
+    marginBottom: theme.spacing.sm,
+    lineHeight: 24,
   },
   backTextContainer: {
     position: "absolute",
@@ -550,27 +399,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: "hidden",
   },
-  buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: theme.spacing.md,
-  },
-  button: {
-    flex: 1,
-    marginHorizontal: theme.spacing.xs,
-  },
-  description: {
-    marginBottom: theme.spacing.md,
-  },
-  categoryBarContainer: {
-    marginTop: 4,
-    marginBottom: 2,
-    width: "100%",
-  },
-  footer: {
-    marginTop: theme.spacing.lg,
-    alignItems: "center",
-  },
   previousAnswerContainer: {
     position: "absolute",
     top: theme.spacing.sm,
@@ -584,6 +412,68 @@ const styles = StyleSheet.create({
   previousAnswerText: {
     color: theme.colors.gray[600],
     fontSize: 11,
+  },
+  levelContainer: {
+    gap: theme.spacing.sm,
+  },
+  levelOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.gray[200],
+    backgroundColor: theme.colors.common.surface,
+  },
+  levelOptionSelected: {
+    borderColor: theme.colors.primary.main,
+    backgroundColor: `${theme.colors.primary.main}10`,
+  },
+  levelOptionDisabled: {
+    opacity: 0.7,
+  },
+  levelBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.colors.gray[200],
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: theme.spacing.sm,
+  },
+  levelBadgeSelected: {
+    backgroundColor: theme.colors.primary.main,
+  },
+  levelBadgeText: {
+    fontWeight: "bold",
+    color: theme.colors.gray[600],
+    fontSize: 13,
+  },
+  levelBadgeTextSelected: {
+    color: theme.colors.common.white,
+  },
+  levelText: {
+    flex: 1,
+    color: theme.colors.gray[700],
+  },
+  levelTextSelected: {
+    color: theme.colors.primary.main,
+    fontWeight: "600",
+  },
+  viewNextContainer: {
+    alignItems: "flex-end",
+    marginTop: theme.spacing.md,
+  },
+  viewNextText: {
+    color: theme.colors.primary.main,
+    fontSize: 13,
+    textDecorationLine: "underline",
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+  },
+  footer: {
+    marginTop: theme.spacing.md,
+    alignItems: "center",
   },
 });
 
