@@ -4,7 +4,7 @@ export default {
   expo: {
     name: "技術マップ",
     slug: "skill-assessment",
-    version: "3.4.0",
+    version: "4.0.0",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
@@ -16,7 +16,7 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.mutsumix.skillassessment",
-      buildNumber: "7",
+      buildNumber: "8",
       newArchEnabled: false,
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
@@ -29,7 +29,7 @@ export default {
       },
       edgeToEdgeEnabled: true,
       package: "com.mutsumix.skillassessment",
-      versionCode: 7,
+      versionCode: 8,
       newArchEnabled: false,
     },
     web: {
