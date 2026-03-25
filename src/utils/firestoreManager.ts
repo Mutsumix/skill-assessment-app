@@ -9,8 +9,13 @@ import {
   Timestamp,
   writeBatch,
 } from "firebase/firestore";
-import { db } from "../config/firebase";
+import { db, isConfigured } from "../config/firebase";
 import { AssessmentHistory, SkillResult, UserAnswer } from "../types";
+
+function getDb() {
+  if (!db || !isConfigured) throw new Error("Firestore未設定");
+  return db;
+}
 
 // Date → Firestore 用オブジェクトに変換
 function toFirestoreData(history: AssessmentHistory): Record<string, any> {
@@ -42,12 +47,12 @@ function fromFirestoreData(id: string, data: Record<string, any>): AssessmentHis
 // 評価履歴の Firestore 管理
 export const FirestoreAssessmentManager = {
   async save(uid: string, history: AssessmentHistory): Promise<void> {
-    const docRef = doc(db, "users", uid, "assessments", history.id);
+    const docRef = doc(getDb(), "users", uid, "assessments", history.id);
     await setDoc(docRef, toFirestoreData(history));
   },
 
   async getAll(uid: string): Promise<AssessmentHistory[]> {
-    const colRef = collection(db, "users", uid, "assessments");
+    const colRef = collection(getDb(), "users", uid, "assessments");
     const q = query(colRef, orderBy("date", "desc"));
     const snapshot = await getDocs(q);
 
@@ -55,14 +60,14 @@ export const FirestoreAssessmentManager = {
   },
 
   async delete(uid: string, assessmentId: string): Promise<void> {
-    const docRef = doc(db, "users", uid, "assessments", assessmentId);
+    const docRef = doc(getDb(), "users", uid, "assessments", assessmentId);
     await deleteDoc(docRef);
   },
 
   async clearAll(uid: string): Promise<void> {
-    const colRef = collection(db, "users", uid, "assessments");
+    const colRef = collection(getDb(), "users", uid, "assessments");
     const snapshot = await getDocs(colRef);
-    const batch = writeBatch(db);
+    const batch = writeBatch(getDb());
     snapshot.docs.forEach((d) => batch.delete(d.ref));
     await batch.commit();
   },
@@ -74,7 +79,7 @@ export const FirestoreUserManager = {
     uid: string,
     data: { email: string; displayName?: string }
   ): Promise<void> {
-    const docRef = doc(db, "users", uid);
+    const docRef = doc(getDb(), "users", uid);
     await setDoc(
       docRef,
       {

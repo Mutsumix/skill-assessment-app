@@ -29,7 +29,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     loadAssessmentHistory
   } = useSkillContext();
 
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, firebaseEnabled } = useAuth();
   const insets = useSafeAreaInsets();
 
   // 画面初期化時にデータを読み込み
@@ -131,8 +131,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           </Typography>
         </View>
 
-        {/* 認証状態 */}
-        <View style={styles.authSection}>
+        {/* 認証状態（Firebase有効時のみ表示） */}
+        {firebaseEnabled && <View style={styles.authSection}>
           {isAuthenticated ? (
             <View style={styles.authLoggedIn}>
               <Typography variant="caption" style={styles.authEmail}>
@@ -154,7 +154,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
               style={styles.loginButton}
             />
           )}
-        </View>
+        </View>}
 
         {/* メインコンテンツ - グリッド表示 */}
         <View style={styles.gridContainer}>

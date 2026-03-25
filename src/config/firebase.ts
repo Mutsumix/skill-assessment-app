@@ -1,9 +1,7 @@
-import { initializeApp } from "firebase/app";
-// React Native 環境では firebase/auth が自動的に RN 用バンドルを使用し
-// getReactNativePersistence がエクスポートされる
+import { initializeApp, FirebaseApp } from "firebase/app";
 // @ts-ignore - TypeScript の型定義には含まれないが、RN バンドルには存在する
-import { initializeAuth, getReactNativePersistence } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeAuth, getReactNativePersistence, Auth } from "firebase/auth";
+import { getFirestore, Firestore } from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 
@@ -18,12 +16,20 @@ const firebaseConfig = {
   appId: extra.firebaseAppId || "",
 };
 
-const app = initializeApp(firebaseConfig);
+const isConfigured = !!firebaseConfig.apiKey && !!firebaseConfig.projectId;
 
-const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage),
-});
+let app: FirebaseApp | null = null;
+let auth: Auth | null = null;
+let db: Firestore | null = null;
 
-const db = getFirestore(app);
+if (isConfigured) {
+  app = initializeApp(firebaseConfig);
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage),
+  });
+  db = getFirestore(app);
+} else {
+  console.warn("Firebase設定が見つかりません。Firebase機能は無効です。");
+}
 
-export { app, auth, db };
+export { app, auth, db, isConfigured };

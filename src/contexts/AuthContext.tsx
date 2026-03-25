@@ -7,7 +7,7 @@ import {
   signOut,
   updateProfile,
 } from "firebase/auth";
-import { auth } from "../config/firebase";
+import { auth, isConfigured } from "../config/firebase";
 import { FirestoreUserManager } from "../utils/firestoreManager";
 
 interface AuthContextType {
@@ -15,6 +15,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isAuthLoading: boolean;
   authError: string | null;
+  firebaseEnabled: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -37,10 +38,15 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [isAuthLoading, setIsAuthLoading] = useState(isConfigured);
   const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!isConfigured || !auth) {
+      setIsAuthLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       setIsAuthLoading(false);
@@ -50,6 +56,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const login = async (email: string, password: string) => {
+    if (!auth) throw new Error("Firebase未設定");
     try {
       setAuthError(null);
       await signInWithEmailAndPassword(auth, email, password);
@@ -61,14 +68,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const signup = async (email: string, password: string, displayName: string) => {
+    if (!auth) throw new Error("Firebase未設定");
     try {
       setAuthError(null);
       const credential = await createUserWithEmailAndPassword(auth, email, password);
-
-      // Firebase Auth のプロフィールに名前を設定
       await updateProfile(credential.user, { displayName });
-
-      // Firestore にユーザー情報を保存
       await FirestoreUserManager.createOrUpdate(credential.user.uid, {
         email,
         displayName,
@@ -81,6 +85,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = async () => {
+    if (!auth) return;
     try {
       setAuthError(null);
       await signOut(auth);
@@ -97,6 +102,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated: user !== null,
     isAuthLoading,
     authError,
+    firebaseEnabled: isConfigured,
     login,
     signup,
     logout,
