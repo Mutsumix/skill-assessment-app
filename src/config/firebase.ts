@@ -1,7 +1,8 @@
 import { initializeApp } from "firebase/app";
-import { initializeAuth } from "firebase/auth";
-// @ts-ignore - React Native 用の永続化。Firebase v11 では型定義が直接公開されていない
-import { getReactNativePersistence } from "@firebase/auth/dist/rn/index.js";
+// React Native 環境では firebase/auth が自動的に RN 用バンドルを使用し
+// getReactNativePersistence がエクスポートされる
+// @ts-ignore - TypeScript の型定義には含まれないが、RN バンドルには存在する
+import { initializeAuth, getReactNativePersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
